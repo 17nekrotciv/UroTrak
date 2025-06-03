@@ -1,6 +1,11 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  FacebookAuthProvider, 
+  OAuthProvider 
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
@@ -12,10 +17,9 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Log a warning if placeholder values from .env are detected or if essential keys are missing.
 if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
   console.warn(
-    "Firebase API Key is not configured correctly or is using a placeholder value from .env. " +
+    "Firebase API Key is not configured correctly or is using a placeholder value. " +
     "Please update NEXT_PUBLIC_FIREBASE_API_KEY in your .env file with your actual Firebase project credential. " +
     "The application will likely not function correctly until this is resolved."
   );
@@ -25,11 +29,27 @@ if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
   );
 }
 
-
-// Initialize Firebase
-// Firebase initializeApp will throw an error if critical parts of the config are missing or invalid.
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-export { app, auth, db };
+// Auth Providers
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+const appleProvider = new OAuthProvider('apple.com');
+const microsoftProvider = new OAuthProvider('microsoft.com');
+
+// You can customize provider scopes or parameters here if needed
+// For example, for Apple to request name and email:
+// appleProvider.addScope('email');
+// appleProvider.addScope('name');
+
+export { 
+  app, 
+  auth, 
+  db, 
+  googleProvider, 
+  facebookProvider, 
+  appleProvider, 
+  microsoftProvider 
+};
