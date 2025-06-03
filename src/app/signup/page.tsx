@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase'; // Assuming db is exported from firebase.ts for Firestore
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, Timestamp } from 'firebase/firestore'; // Import Timestamp
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,21 +41,44 @@ export default function SignupPage() {
       
       await updateProfile(user, { displayName: data.displayName });
 
-      // Optionally, create a user document in Firestore
+      // Create a user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
         displayName: data.displayName,
         email: user.email,
-        createdAt: new Date(),
+        createdAt: Timestamp.fromDate(new Date()), // Use Firestore Timestamp
       });
 
       toast({ title: "Cadastro realizado com sucesso!", description: "Você será redirecionado para o painel." });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Signup error:", error);
-      let errorMessage = "Ocorreu um erro ao tentar criar a conta. Tente novamente.";
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "Este email já está em uso.";
+      console.error("Erro detalhado no cadastro:", error); // Log the full error object
+      let errorMessage = "Ocorreu um erro ao tentar criar a conta. Por favor, tente novamente.";
+      
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = "Este email já está cadastrado. Tente fazer login ou use um email diferente.";
+            break;
+          case 'auth/invalid-email':
+            errorMessage = "O email fornecido não é válido.";
+            break;
+          case 'auth/operation-not-allowed':
+            errorMessage = "O cadastro com email e senha não está habilitado. Contate o suporte.";
+            break;
+          case 'auth/weak-password':
+            errorMessage = "A senha fornecida é muito fraca. Por favor, use uma senha mais forte.";
+            break;
+          case 'permission-denied': // Firestore permission error
+            errorMessage = "Falha ao salvar dados do usuário: permissão negada. Verifique as regras de segurança do Firestore.";
+            break;
+          default:
+            errorMessage = `Erro no cadastro (${error.code}): ${error.message || 'Tente novamente.'}`;
+        }
+      } else if (error.message) {
+        // Fallback for non-Firebase errors or errors without a code
+        errorMessage = error.message;
       }
+
       toast({
         title: "Erro no Cadastro",
         description: errorMessage,
