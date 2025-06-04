@@ -61,12 +61,11 @@ export default function SidebarNavContent({ onLinkClick }: SidebarNavContentProp
       <div className="mt-auto p-4 text-center text-xs text-muted-foreground space-y-2 border-t">
         <div className="mb-2">
            <Image
-            src="https://placehold.co/150x45.png" 
+            src="/logo-clinica-uroonco.png" 
             alt="Clínica Uro Onco Logo"
             width={150}
             height={45}
             className="mx-auto h-auto"
-            data-ai-hint="clinic logo"
           />
         </div>
         <p className="font-semibold">Dr. Bruno Benigno</p>

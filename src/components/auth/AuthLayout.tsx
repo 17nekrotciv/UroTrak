@@ -15,12 +15,11 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Image 
-            src="https://placehold.co/200x60.png" 
+            src="/logo-clinica-uroonco.png" 
             alt="UroTrack - Clínica Uro Onco Logo" 
             width={200} 
             height={60} 
             className="mx-auto mb-4"
-            data-ai-hint="clinic logo"
             priority
           />
           <h1 className="font-headline text-4xl font-bold text-primary">{title}</h1>
