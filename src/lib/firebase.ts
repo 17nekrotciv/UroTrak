@@ -6,7 +6,8 @@ import {
   FacebookAuthProvider,
   OAuthProvider
 } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+// Atualizado: Importar initializeFirestore e persistentLocalCache
+import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -38,23 +39,15 @@ if (!apiKey || apiKey === "YOUR_API_KEY_HERE" || apiKey.trim() === "" || !apiKey
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const db = getFirestore(app);
 
-// Habilitar persistência offline
-enableIndexedDbPersistence(db)
-  .then(() => {
-    console.log("Persistência offline do Firestore (IndexedDB) habilitada com sucesso.");
-  })
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn("Falha ao habilitar persistência offline do Firestore: Múltiplas abas abertas ou outra pré-condição não atendida.", err);
-    } else if (err.code === 'unimplemented') {
-      console.warn("Falha ao habilitar persistência offline do Firestore: O navegador não suporta os recursos necessários.", err);
-    } else {
-      console.error("Falha ao habilitar persistência offline do Firestore:", err);
-    }
-  });
+// Inicializar o Firestore com as configurações de cache persistente usando a nova API
+const db = initializeFirestore(app, {
+  cache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
+});
+console.log("Persistência offline do Firestore configurada usando FirestoreSettings.cache.");
 
+// A chamada antiga para enableIndexedDbPersistence() foi removida.
+// O Firestore agora lida com a inicialização do cache internamente com base nas configurações fornecidas.
 
 // Auth Providers
 const googleProvider = new GoogleAuthProvider();
