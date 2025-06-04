@@ -1,6 +1,8 @@
 // src/components/auth/AuthLayout.tsx
 import React, { type ReactNode } from 'react';
-import Image from 'next/image'; // Using next/image for optimized images
+import Image from 'next/image';
+import Link from 'next/link';
+import { FaWhatsapp } from 'react-icons/fa';
 
 interface AuthLayoutProps {
   children: ReactNode;
@@ -12,9 +14,15 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-accent/30 p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          {/* Replace with an actual logo if available */}
-          {/* <Image src="/logo-urotrack.png" alt="UroTrack Logo" width={120} height={120} className="mx-auto mb-4" data-ai-hint="medical logo" /> */}
-          <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 lucide lucide-shield-plus"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M8 11h8"/><path d="M12 7v8"/></svg>
+          <Image 
+            src="https://placehold.co/200x60.png" // Substitua por /logo-uroonco.png quando o arquivo estiver em public/
+            alt="UroTrack - Clínica Uro Onco Logo" 
+            width={200} // Ajuste a largura conforme necessário
+            height={60} // Ajuste a altura conforme necessário
+            className="mx-auto mb-4"
+            data-ai-hint="clinic logo"
+            priority
+          />
           <h1 className="font-headline text-4xl font-bold text-primary">{title}</h1>
           <p className="mt-2 text-muted-foreground">Bem-vindo ao UroTrack</p>
         </div>
@@ -23,11 +31,27 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
           {children}
         </div>
 
-        <p className="mt-8 text-center text-xs text-muted-foreground">
-          Todos os direitos reservados são de propriedade da Clínica Uro Onco.
-          <br />
-          Desenvolvido pela equipe de tecnologia em conjunto com Dr. Bruno Benigno.
-        </p>
+        <div className="mt-8 text-center text-xs text-muted-foreground space-y-1">
+          <p>
+            Dr. Bruno Benigno | CRM SP 126265 | RQE 60022 | Responsável Técnico
+          </p>
+          <p>
+            <Link href="https://www.clinicauroonco.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
+              www.clinicauroonco.com.br
+            </Link>
+          </p>
+          <div className="flex items-center justify-center gap-2">
+            <Link href="https://api.whatsapp.com/send?phone=5511995901506" target="_blank" rel="noopener noreferrer" className="hover:text-primary inline-flex items-center gap-1 hover:underline">
+              <FaWhatsapp className="h-4 w-4" />
+              <span>Contato via WhatsApp</span>
+            </Link>
+          </div>
+          <p className="pt-2"> 
+            Todos os direitos reservados são de propriedade da Clínica Uro Onco.
+            <br />
+            Desenvolvido pela equipe de tecnologia em conjunto com Dr. Bruno Benigno.
+          </p>
+        </div>
       </div>
     </div>
   );
