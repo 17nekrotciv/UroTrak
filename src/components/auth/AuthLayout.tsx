@@ -13,7 +13,6 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-accent/30 p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          {/* App Logo replaced with text */}
           <h1 className="font-headline text-3xl font-bold text-primary mb-2">Uro Track - Clínica Uro Onco</h1>
           <h2 className="font-headline text-4xl font-bold text-primary">{title}</h2>
           <p className="mt-2 text-muted-foreground">Bem-vindo ao UroTrack</p>
@@ -24,11 +23,13 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
         </div>
 
         <div className="mt-8 text-center text-xs text-muted-foreground space-y-1">
-          {/* Clinic Logo replaced with text */}
           <p className="text-sm font-semibold mb-1">Clinica Uro Onco</p>
           <p>
-            Dr. Bruno Benigno | CRM SP 126265 | RQE 60022 | Responsável Técnico
+            <Link href="https://www.clinicauroonco.com.br/urologista-especializado-robotica" target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
+              Dr. Bruno Benigno | Uro-oncologista
+            </Link>
           </p>
+          <p>CRM SP 126265 | RQE 60022 | Responsável Técnico</p>
           <p>
             <Link href="https://www.clinicauroonco.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
               www.clinicauroonco.com.br

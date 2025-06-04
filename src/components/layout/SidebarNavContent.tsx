@@ -59,10 +59,13 @@ export default function SidebarNavContent({ onLinkClick }: SidebarNavContentProp
       </nav>
       <div className="mt-auto p-4 text-center text-xs text-muted-foreground space-y-2 border-t">
         <div className="mb-2">
-           {/* Clinic Logo replaced with text */}
           <p className="text-sm font-semibold">Clinica Uro Onco</p>
         </div>
-        <p className="font-semibold">Dr. Bruno Benigno</p>
+        <p className="font-semibold">
+          <Link href="https://www.clinicauroonco.com.br/urologista-especializado-robotica" target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
+            Dr. Bruno Benigno | Uro-oncologista
+          </Link>
+        </p>
         <p>CRM SP 126265 | RQE 60022</p>
         <p>Responsável Técnico</p>
         <p>
