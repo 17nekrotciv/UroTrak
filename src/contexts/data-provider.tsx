@@ -14,14 +14,13 @@ interface DataContextType {
   addUrinaryLog: (log: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
   addErectileLog: (log: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
   addPSALog: (log: Omit<PSALogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
-  // Placeholder for delete/update functions if needed later
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { toast } = useToast(); // Toast ainda é usado para fetchData
   const [appData, setAppData] = useState<AppData>({
     urinaryLogs: [],
     erectileLogs: [],
@@ -38,7 +37,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         items.push({ 
           id: doc.id, 
           ...data,
-          date: (data.date as Timestamp).toDate().toISOString() // Convert Timestamp to ISO string
+          date: (data.date as Timestamp).toDate().toISOString()
         });
       });
       setAppData(prevData => ({
@@ -77,16 +76,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   const addLog = async <T extends { date: Date }>(collectionName: string, log: Omit<T, 'id'> ) => {
     if (!user) {
-      toast({ title: "Erro", description: "Você precisa estar logado para adicionar dados.", variant: "destructive" });
-      return;
+      console.error("User not logged in to add data.");
+      // Lançar erro para a página do formulário lidar, em vez de fazer toast aqui.
+      throw new Error("Usuário não autenticado. Não é possível salvar os dados.");
     }
     try {
       const logWithTimestamp = { ...log, date: Timestamp.fromDate(log.date) };
       await addDoc(collection(db, 'users', user.uid, collectionName), logWithTimestamp);
-      toast({ title: "Sucesso", description: "Dados salvos com sucesso!" });
+      // Toast de sucesso será feito pela página do formulário (agregado).
     } catch (error) {
       console.error(`Error adding ${collectionName} log: `, error);
-      toast({ title: "Erro ao salvar", description: `Não foi possível salvar os dados. Tente novamente.`, variant: "destructive" });
+      // Lançar erro para a página do formulário lidar e fazer toast se necessário.
+      throw error; 
     }
   };
 

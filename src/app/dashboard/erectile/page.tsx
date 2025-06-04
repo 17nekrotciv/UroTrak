@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-provider';
 
 const singleErectileEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
@@ -51,6 +52,7 @@ const getDefaultErectileEntry = (): SingleErectileEntryInput => ({
 });
 
 export default function ErectilePage() {
+  const { user } = useAuth();
   const { appData, addErectileLog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +70,10 @@ export default function ErectilePage() {
   });
 
   const onSubmit: SubmitHandler<ErectileFormInputs> = async (data) => {
+    if (!user) {
+      toast({ title: "Erro de Autenticação", description: "Você precisa estar logado para salvar dados.", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
@@ -80,21 +86,26 @@ export default function ErectilePage() {
         };
         await addErectileLog(logData);
         successCount++;
-      } catch (error) {
-        console.error("Erro ao submeter registro de função erétil individual:", error);
+      } catch (error: any) {
+        console.error("Erro ao submeter registro de função erétil individual:", error.message || error);
         errorCount++;
       }
     }
     
     setIsSubmitting(false);
 
-    if (successCount > 0 && errorCount === 0) {
-      toast({ title: "Sucesso!", description: `${successCount} registro(s) de função erétil salvo(s) com sucesso.` });
+    if (successCount > 0) {
+      if (errorCount === 0) {
+        toast({ title: "Sucesso!", description: `${successCount} registro(s) de função erétil salvo(s) com sucesso.` });
+      } else {
+        toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+      }
       reset({ entries: [getDefaultErectileEntry()] });
-    } else if (successCount > 0 && errorCount > 0) {
-      toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s), ${errorCount} falhou(ram).`, variant: "default" });
     } else if (errorCount > 0) {
-      toast({ title: "Erro", description: `Falha ao salvar ${errorCount} registro(s) de função erétil.`, variant: "destructive" });
+      toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
+      // Não resetar se tudo falhou
+    } else if (data.entries.length === 0) {
+      toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
     }
   };
   
@@ -124,7 +135,7 @@ export default function ErectilePage() {
                   render={({ field: controllerField }) => (
                     <Select 
                       onValueChange={controllerField.onChange} 
-                      value={controllerField.value}
+                      value={controllerField.value} // Use value here
                     >
                       <SelectTrigger id={`entries.${index}.erectionQuality`} className={errors.entries?.[index]?.erectionQuality ? "border-destructive" : ""}>
                         <SelectValue placeholder="Selecione a qualidade da ereção" />
@@ -158,6 +169,7 @@ export default function ErectilePage() {
                     </RadioGroup>
                   )}
                 />
+                 {errors.entries?.[index]?.medicationUsed && <p className="text-sm text-destructive">{errors.entries?.[index]?.medicationUsed?.message}</p>}
               </div>
 
               <div className="space-y-2">

@@ -19,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-provider';
 
 const singleUrinaryEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
@@ -50,6 +51,7 @@ const getDefaultUrinaryEntry = (): SingleUrinaryEntryInput => ({
 });
 
 export default function UrinaryPage() {
+  const { user } = useAuth();
   const { appData, addUrinaryLog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +69,10 @@ export default function UrinaryPage() {
   });
 
   const onSubmit: SubmitHandler<UrinaryFormInputs> = async (data) => {
+    if (!user) {
+      toast({ title: "Erro de Autenticação", description: "Você precisa estar logado para salvar dados.", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
@@ -79,26 +85,31 @@ export default function UrinaryPage() {
           lossGrams: entry.lossGrams ?? null,
           padChanges: entry.padChanges ?? null,
         };
-        await addUrinaryLog(logData); // Assumindo que addUrinaryLog agora não faz toast individual
+        await addUrinaryLog(logData);
         successCount++;
-      } catch (error) {
-        console.error("Erro ao submeter registro urinário individual:", error);
+      } catch (error: any) {
+        console.error("Erro ao submeter registro urinário individual:", error.message || error);
         errorCount++;
       }
     }
 
     setIsSubmitting(false);
 
-    if (successCount > 0 && errorCount === 0) {
-      toast({ title: "Sucesso!", description: `${successCount} registro(s) urinário(s) salvo(s) com sucesso.` });
+    if (successCount > 0) {
+      if (errorCount === 0) {
+        toast({ title: "Sucesso!", description: `${successCount} registro(s) urinário(s) salvo(s) com sucesso.` });
+      } else {
+        toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+      }
       reset({ entries: [getDefaultUrinaryEntry()] });
-    } else if (successCount > 0 && errorCount > 0) {
-      toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s), ${errorCount} falhou(ram).`, variant: "default" });
-      // Não reseta para permitir correção dos que falharam, ou o usuário decide.
-      // Idealmente, teríamos um feedback mais granular aqui.
     } else if (errorCount > 0) {
-      toast({ title: "Erro", description: `Falha ao salvar ${errorCount} registro(s) urinário(s).`, variant: "destructive" });
+      toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
+      // Não resetar se tudo falhou, para permitir correção.
+    } else if (data.entries.length === 0) {
+      toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
     }
+    // Se data.entries.length > 0 mas successCount e errorCount são 0, algo inesperado ocorreu.
+    // O DataProvider lançar erro deve prevenir isso.
   };
 
   return (
@@ -158,6 +169,7 @@ export default function UrinaryPage() {
                     step="any" 
                     placeholder="Ex: 50" 
                     {...register(`entries.${index}.lossGrams`)} 
+                     className={errors.entries?.[index]?.lossGrams ? "border-destructive" : ""}
                   />
                   {errors.entries?.[index]?.lossGrams && <p className="text-sm text-destructive">{errors.entries?.[index]?.lossGrams?.message}</p>}
                 </div>
@@ -168,6 +180,7 @@ export default function UrinaryPage() {
                     type="number" 
                     placeholder="Ex: 3" 
                     {...register(`entries.${index}.padChanges`)} 
+                     className={errors.entries?.[index]?.padChanges ? "border-destructive" : ""}
                   />
                   {errors.entries?.[index]?.padChanges && <p className="text-sm text-destructive">{errors.entries?.[index]?.padChanges?.message}</p>}
                 </div>

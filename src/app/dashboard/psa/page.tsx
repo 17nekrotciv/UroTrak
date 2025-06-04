@@ -19,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-provider';
 
 const singlePsaEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
@@ -43,6 +44,7 @@ const getDefaultPSAEntry = (): SinglePSAEntryInput => ({
 });
 
 export default function PSAPage() {
+  const { user } = useAuth();
   const { appData, addPSALog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +62,10 @@ export default function PSAPage() {
   });
 
   const onSubmit: SubmitHandler<PSAFormInputs> = async (data) => {
+    if (!user) {
+      toast({ title: "Erro de Autenticação", description: "Você precisa estar logado para salvar dados.", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
@@ -73,21 +79,26 @@ export default function PSAPage() {
         };
         await addPSALog(logData);
         successCount++;
-      } catch (error) {
-        console.error("Erro ao submeter resultado PSA individual:", error);
+      } catch (error: any) {
+        console.error("Erro ao submeter resultado PSA individual:", error.message || error);
         errorCount++;
       }
     }
     
     setIsSubmitting(false);
 
-    if (successCount > 0 && errorCount === 0) {
-      toast({ title: "Sucesso!", description: `${successCount} resultado(s) PSA salvo(s) com sucesso.` });
+    if (successCount > 0) {
+      if (errorCount === 0) {
+        toast({ title: "Sucesso!", description: `${successCount} resultado(s) PSA salvo(s) com sucesso.` });
+      } else {
+        toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+      }
       reset({ entries: [getDefaultPSAEntry()] });
-    } else if (successCount > 0 && errorCount > 0) {
-      toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s), ${errorCount} falhou(ram).`, variant: "default" });
     } else if (errorCount > 0) {
-      toast({ title: "Erro", description: `Falha ao salvar ${errorCount} resultado(s) PSA.`, variant: "destructive" });
+      toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
+      // Não resetar se tudo falhou
+    } else if (data.entries.length === 0) {
+      toast({ title: "Nenhum registro", description: "Adicione pelo menos um resultado para salvar.", variant: "default" });
     }
   };
 
