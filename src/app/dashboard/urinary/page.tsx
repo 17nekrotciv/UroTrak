@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { UrinaryLogEntry } from '@/types';
-import { Loader2, Droplets, Save, PlusCircle } from 'lucide-react'; // Added PlusCircle
+import { Loader2, Droplets, Save, PlusCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -48,16 +48,55 @@ export default function UrinaryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
-  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<UrinaryFormInputs>({
+  const { control, register, handleSubmit, reset, watch, formState: { errors } } = useForm<UrinaryFormInputs>({
     resolver: zodResolver(urinarySchema),
     defaultValues: defaultFormValues,
   });
 
+  const watchedFields = watch(); // Observa todos os campos
+
   useEffect(() => {
-    if (isDirty && actionState === 'addNext') {
-      setActionState('save');
+    // Se o formulário foi modificado pelo usuário E o estado do botão é 'addNext'
+    // (ou seja, estava pronto para um novo registro, mas o usuário começou a editar),
+    // então redefina o estado do botão para 'save'.
+    // Comparamos os valores atuais com os defaultFormValues para simular 'isDirty'
+    // de uma forma que nos dá mais controle após o reset.
+    let dirty = false;
+    for (const key in watchedFields) {
+      const typedKey = key as keyof UrinaryFormInputs;
+      if (watchedFields[typedKey] !== defaultFormValues[typedKey]) {
+         // Tratamento especial para data, pois new Date().toISOString() sempre será diferente
+        if (typedKey === 'date' && actionState === 'addNext') {
+            // Se for a data e estivermos no modo 'addNext', consideramos 'dirty' se o usuário mudar a data
+            // (o reset já terá definido uma nova data padrão para 'addNext')
+            // Esta comparação é simplista; para datas, pode precisar de uma lógica mais robusta se o reset da data
+            // for para um valor diferente do new Date() inicial do defaultFormValues.
+            // No entanto, com `reset(defaultFormValues)` e `defaultFormValues.date = new Date().toISOString()`,
+            // a data sempre será "nova" após o reset, então uma simples edição a tornará "dirty".
+        } else if (typedKey !== 'date') {
+          dirty = true;
+          break;
+        }
+      }
     }
-  }, [isDirty, actionState]);
+    // Uma forma mais simples de verificar se algo mudou desde o 'defaultFormValues'
+    // após o reset para o modo 'addNext'.
+    const hasUserMadeChanges = JSON.stringify(watchedFields) !== JSON.stringify(defaultFormValues);
+
+
+    if (hasUserMadeChanges && actionState === 'addNext') {
+       // Verifica se algum valor (exceto a data que é sempre nova) mudou desde o estado 'defaultFormValues'
+        const valuesChanged = (Object.keys(defaultFormValues) as Array<keyof UrinaryFormInputs>).some(key => {
+            if (key === 'date') return false; // Ignora a data para esta verificação específica
+            return watchedFields[key] !== defaultFormValues[key];
+        });
+
+        if(valuesChanged) {
+            setActionState('save');
+        }
+    }
+  }, [watchedFields, actionState, defaultFormValues]);
+
 
   const onSubmit: SubmitHandler<UrinaryFormInputs> = async (data) => {
     setIsSubmitting(true);
@@ -69,10 +108,19 @@ export default function UrinaryPage() {
         padChanges: data.padChanges ?? null,
       };
       await addUrinaryLog(logData);
-      reset(defaultFormValues);
+      // Recria defaultFormValues para ter a data atual para o próximo registro
+      const newDefaultFormValues = {
+        ...defaultFormValues,
+        date: new Date().toISOString(), 
+        // Mantém os outros campos como padrão para um formulário "limpo"
+        urgency: false,
+        burning: false,
+        lossGrams: null,
+        padChanges: null,
+      };
+      reset(newDefaultFormValues); 
       setActionState('addNext');
     } catch (error) {
-      // Toast de erro é tratado pelo DataProvider
       console.error("Erro ao submeter registro urinário:", error);
     } finally {
       setIsSubmitting(false);
@@ -90,6 +138,14 @@ export default function UrinaryPage() {
     buttonText = "Adicionar Novo Registro";
   }
 
+  // Quando qualquer campo do formulário muda, e o estado é 'addNext', reverte para 'save'
+  const handleFormChange = () => {
+    if (actionState === 'addNext') {
+      setActionState('save');
+    }
+  };
+
+
   return (
     <>
       <PageHeader title="Sintomas Urinários" description="Registre seus sintomas urinários aqui." icon={Droplets} />
@@ -99,7 +155,7 @@ export default function UrinaryPage() {
           <CardTitle className="font-headline text-xl">Novo Registro Urinário</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} onChange={handleFormChange} className="space-y-6">
             <DatePickerField control={control} name="date" label="Data do Registro" error={errors.date?.message} />
 
             <div className="flex items-center space-x-3">

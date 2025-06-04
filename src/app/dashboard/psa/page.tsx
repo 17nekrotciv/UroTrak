@@ -14,7 +14,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { PSALogEntry } from '@/types';
-import { Loader2, ClipboardList, Save, PlusCircle } from 'lucide-react'; // Added PlusCircle
+import { Loader2, ClipboardList, Save, PlusCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -42,16 +42,10 @@ export default function PSAPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
-  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<PSAFormInputs>({
+  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<PSAFormInputs>({
     resolver: zodResolver(psaSchema),
     defaultValues: defaultFormValues,
   });
-
-  useEffect(() => {
-    if (isDirty && actionState === 'addNext') {
-      setActionState('save');
-    }
-  }, [isDirty, actionState]);
 
   const onSubmit: SubmitHandler<PSAFormInputs> = async (data) => {
     setIsSubmitting(true);
@@ -62,10 +56,15 @@ export default function PSAPage() {
         psaValue: data.psaValue ?? null,
       };
       await addPSALog(logData);
-      reset(defaultFormValues); 
+      const newDefaultFormValues = {
+        ...defaultFormValues,
+        date: new Date().toISOString(),
+        psaValue: null,
+        notes: '',
+      };
+      reset(newDefaultFormValues); 
       setActionState('addNext');
     } catch (error) {
-      // Toast de erro é tratado pelo DataProvider
       console.error("Erro ao submeter registro de PSA:", error);
     } finally {
       setIsSubmitting(false);
@@ -83,6 +82,11 @@ export default function PSAPage() {
     buttonText = "Adicionar Novo Resultado PSA";
   }
 
+  const handleFormChange = () => {
+    if (actionState === 'addNext') {
+      setActionState('save');
+    }
+  };
 
   return (
     <>
@@ -93,7 +97,7 @@ export default function PSAPage() {
           <CardTitle className="font-headline text-xl">Novo Registro de PSA</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} onChange={handleFormChange} className="space-y-6">
             <DatePickerField control={control} name="date" label="Data do Exame" error={errors.date?.message} />
 
             <div className="space-y-2">

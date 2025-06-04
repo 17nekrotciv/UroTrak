@@ -14,7 +14,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { ErectileLogEntry } from '@/types';
-import { Loader2, HeartPulse, Save, PlusCircle } from 'lucide-react'; // Added PlusCircle
+import { Loader2, HeartPulse, Save, PlusCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -50,16 +50,10 @@ export default function ErectilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
-  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<ErectileFormInputs>({
+  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<ErectileFormInputs>({
     resolver: zodResolver(erectileSchema),
     defaultValues: defaultFormValues,
   });
-
-  useEffect(() => {
-    if (isDirty && actionState === 'addNext') {
-      setActionState('save');
-    }
-  }, [isDirty, actionState]);
 
   const onSubmit: SubmitHandler<ErectileFormInputs> = async (data) => {
     setIsSubmitting(true);
@@ -69,10 +63,16 @@ export default function ErectilePage() {
         date: new Date(data.date),
       };
       await addErectileLog(logData);
-      reset(defaultFormValues);
+      const newDefaultFormValues = {
+        ...defaultFormValues,
+        date: new Date().toISOString(),
+        erectionQuality: '',
+        medicationUsed: 'none',
+        medicationNotes: '',
+      };
+      reset(newDefaultFormValues);
       setActionState('addNext');
     } catch (error) {
-      // A lógica de toast de erro já está no addErectileLog (via DataProvider)
       console.error("Erro ao submeter registro de função erétil:", error);
     } finally {
       setIsSubmitting(false);
@@ -89,6 +89,12 @@ export default function ErectilePage() {
     ButtonIconComponent = PlusCircle;
     buttonText = "Adicionar Novo Registro";
   }
+  
+  const handleFormChange = () => {
+    if (actionState === 'addNext') {
+      setActionState('save');
+    }
+  };
 
   return (
     <>
@@ -99,7 +105,7 @@ export default function ErectilePage() {
           <CardTitle className="font-headline text-xl">Novo Registro de Função Erétil</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} onChange={handleFormChange} className="space-y-6">
             <DatePickerField control={control} name="date" label="Data do Registro" error={errors.date?.message} />
 
             <div className="space-y-2">
@@ -108,7 +114,7 @@ export default function ErectilePage() {
                 name="erectionQuality"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value} >
+                  <Select onValueChange={(value) => { field.onChange(value); handleFormChange(); }} value={field.value} >
                     <SelectTrigger id="erectionQuality" className={errors.erectionQuality ? "border-destructive" : ""}>
                       <SelectValue placeholder="Selecione a qualidade da ereção" />
                     </SelectTrigger>
@@ -130,7 +136,7 @@ export default function ErectilePage() {
                 control={control}
                 render={({ field }) => (
                   <RadioGroup
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => { field.onChange(value); handleFormChange(); }}
                     value={field.value} 
                     className="flex flex-col space-y-1"
                   >
