@@ -21,7 +21,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-provider';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 
 const singlePsaEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
@@ -50,7 +50,7 @@ export default function PSAPage() {
   const { appData, addPSALog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<PSAFormInputs>({
     resolver: zodResolver(psaFormSchema),
@@ -69,6 +69,12 @@ export default function PSAPage() {
       toast({ title: "Erro de Autenticação", description: "Você precisa estar logado para salvar dados.", variant: "destructive" });
       return;
     }
+
+    if (data.entries.length === 0) {
+      toast({ title: "Nenhum registro", description: "Adicione pelo menos um resultado para salvar.", variant: "default" });
+      return;
+    }
+
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
@@ -95,12 +101,12 @@ export default function PSAPage() {
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        router.push('/dashboard'); // Navigate on success
+        router.push('/dashboard');
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-      } else if (data.entries.length === 0) {
-        toast({ title: "Nenhum registro", description: "Adicione pelo menos um resultado para salvar.", variant: "default" });
       }
+       // No specific toast if data.entries was initially empty, handled at the start.
+
     } catch (e) {
       console.error("Erro inesperado no processo de submissão de PSA:", e);
       toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de PSA.", variant: "destructive" });

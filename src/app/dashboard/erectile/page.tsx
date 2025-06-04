@@ -22,7 +22,7 @@ import { ptBR } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-provider';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 
 const singleErectileEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
@@ -58,7 +58,7 @@ export default function ErectilePage() {
   const { appData, addErectileLog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<ErectileFormInputs>({
     resolver: zodResolver(erectileFormSchema),
@@ -77,6 +77,12 @@ export default function ErectilePage() {
       toast({ title: "Erro de Autenticação", description: "Você precisa estar logado para salvar dados.", variant: "destructive" });
       return;
     }
+
+    if (data.entries.length === 0) {
+      toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
+      return;
+    }
+
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
@@ -102,12 +108,12 @@ export default function ErectilePage() {
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        router.push('/dashboard/psa'); // Navigate on success
+        router.push('/dashboard/psa');
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-      } else if (data.entries.length === 0) {
-        toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
       }
+      // No specific toast if data.entries was initially empty, handled at the start.
+
     } catch (e) {
       console.error("Erro inesperado no processo de submissão da função erétil:", e);
       toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de função erétil.", variant: "destructive" });
