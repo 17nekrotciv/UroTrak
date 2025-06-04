@@ -17,15 +17,29 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
-  console.warn(
-    "Firebase API Key is not configured correctly or is using a placeholder value. " +
-    "Please update NEXT_PUBLIC_FIREBASE_API_KEY in your .env file with your actual Firebase project credential. " +
-    "The application will likely not function correctly until this is resolved."
+const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+if (!apiKey || apiKey === "YOUR_API_KEY_HERE" || apiKey.trim() === "") {
+  console.error(
+    "ERRO CRÍTICO DE CONFIGURAÇÃO DO FIREBASE: " +
+    "A variável NEXT_PUBLIC_FIREBASE_API_KEY não está definida ou está usando um valor de placeholder. " +
+    "Por favor, crie um arquivo .env.local na raiz do seu projeto (ou edite o .env existente) e adicione suas credenciais reais do Firebase. " +
+    "Exemplo de .env.local:\n" +
+    "NEXT_PUBLIC_FIREBASE_API_KEY=suaChaveDeApiReal\n" +
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=seuDominioDeAutenticacaoReal\n" +
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID=seuIdDeProjetoReal\n" +
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=seuStorageBucketReal\n" +
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=seuMessagingSenderIdReal\n" +
+    "NEXT_PUBLIC_FIREBASE_APP_ID=seuAppIdReal\n\n" +
+    "A aplicação provavelmente não funcionará corretamente até que isso seja resolvido. " +
+    "Após adicionar as chaves, REINICIE o servidor de desenvolvimento (npm run dev)."
   );
-} else if (!firebaseConfig.projectId) {
-  console.warn(
-    "Firebase Project ID is not configured. Please set NEXT_PUBLIC_FIREBASE_PROJECT_ID in your .env file."
+} else if (!projectId || projectId === "YOUR_PROJECT_ID_HERE" || projectId.trim() === "") {
+  console.error(
+    "ERRO DE CONFIGURAÇÃO DO FIREBASE: " +
+    "A variável NEXT_PUBLIC_FIREBASE_PROJECT_ID não está definida ou está usando um valor de placeholder. " +
+    "Verifique seu arquivo .env.local (ou .env)."
   );
 }
 
@@ -38,11 +52,6 @@ const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
 const microsoftProvider = new OAuthProvider('microsoft.com');
-
-// You can customize provider scopes or parameters here if needed
-// For example, for Apple to request name and email:
-// appleProvider.addScope('email');
-// appleProvider.addScope('name');
 
 export { 
   app, 
