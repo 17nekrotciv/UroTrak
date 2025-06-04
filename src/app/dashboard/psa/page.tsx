@@ -71,36 +71,41 @@ export default function PSAPage() {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const entry of data.entries) {
-      try {
-        const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
-          ...entry,
-          date: new Date(entry.date),
-          psaValue: entry.psaValue ?? null,
-        };
-        await addPSALog(logData);
-        successCount++;
-      } catch (error: any) {
-        console.error("Erro ao submeter resultado PSA individual:", error.message || error);
-        errorCount++;
+    try {
+      for (const entry of data.entries) {
+        try {
+          const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
+            ...entry,
+            date: new Date(entry.date),
+            psaValue: entry.psaValue ?? null,
+          };
+          await addPSALog(logData);
+          successCount++;
+        } catch (error: any) {
+          console.error("Erro ao submeter resultado PSA individual:", error.message || error, error);
+          errorCount++;
+        }
       }
-    }
     
-    setIsSubmitting(false);
-
-    if (successCount > 0) {
-      if (errorCount === 0) {
-        toast({ title: "Sucesso!", description: `${successCount} resultado(s) PSA salvo(s) com sucesso.` });
-      } else {
-        toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+      if (successCount > 0) {
+        if (errorCount === 0) {
+          toast({ title: "Sucesso!", description: `${successCount} resultado(s) PSA salvo(s) com sucesso.` });
+        } else {
+          toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+        }
+      } else if (errorCount > 0) {
+        toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
+      } else if (data.entries.length === 0) {
+        toast({ title: "Nenhum registro", description: "Adicione pelo menos um resultado para salvar.", variant: "default" });
       }
-    } else if (errorCount > 0) {
-      toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-    } else if (data.entries.length === 0) {
-      toast({ title: "Nenhum registro", description: "Adicione pelo menos um resultado para salvar.", variant: "default" });
+    } catch (e) {
+      console.error("Erro inesperado no processo de submissão de PSA:", e);
+      toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de PSA.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+      const newDefaultFormValues = getDefaultPSAEntry();
+      reset({ entries: [newDefaultFormValues] });
     }
-
-    reset({ entries: [getDefaultPSAEntry()] });
   };
 
   return (
@@ -204,3 +209,5 @@ export default function PSAPage() {
     </>
   );
 }
+
+    

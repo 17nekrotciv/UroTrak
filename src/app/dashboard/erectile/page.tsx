@@ -79,35 +79,40 @@ export default function ErectilePage() {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const entry of data.entries) {
-      try {
-        const logData: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date } = {
-          ...entry,
-          date: new Date(entry.date),
-        };
-        await addErectileLog(logData);
-        successCount++;
-      } catch (error: any) {
-        console.error("Erro ao submeter registro de função erétil individual:", error.message || error);
-        errorCount++;
+    try {
+      for (const entry of data.entries) {
+        try {
+          const logData: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date } = {
+            ...entry,
+            date: new Date(entry.date),
+          };
+          await addErectileLog(logData);
+          successCount++;
+        } catch (error: any) {
+          console.error("Erro ao submeter registro de função erétil individual:", error.message || error, error);
+          errorCount++;
+        }
       }
-    }
-    
-    setIsSubmitting(false);
-
-    if (successCount > 0) {
-      if (errorCount === 0) {
-        toast({ title: "Sucesso!", description: `${successCount} registro(s) de função erétil salvo(s) com sucesso.` });
-      } else {
-        toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+      
+      if (successCount > 0) {
+        if (errorCount === 0) {
+          toast({ title: "Sucesso!", description: `${successCount} registro(s) de função erétil salvo(s) com sucesso.` });
+        } else {
+          toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+        }
+      } else if (errorCount > 0) {
+        toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
+      } else if (data.entries.length === 0) {
+        toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
       }
-    } else if (errorCount > 0) {
-      toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-    } else if (data.entries.length === 0) {
-      toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
+    } catch (e) {
+      console.error("Erro inesperado no processo de submissão da função erétil:", e);
+      toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de função erétil.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+      const newDefaultFormValues = getDefaultErectileEntry();
+      reset({ entries: [newDefaultFormValues] });
     }
-    
-    reset({ entries: [getDefaultErectileEntry()] });
   };
   
   return (
@@ -249,3 +254,5 @@ export default function ErectilePage() {
     </>
   );
 }
+
+    
