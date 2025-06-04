@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-provider';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 const singleUrinaryEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
@@ -56,6 +57,7 @@ export default function UrinaryPage() {
   const { appData, addUrinaryLog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter(); // Initialize useRouter
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<UrinaryFormInputs>({
     resolver: zodResolver(urinaryFormSchema),
@@ -102,6 +104,7 @@ export default function UrinaryPage() {
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
+        router.push('/dashboard/erectile'); // Navigate on success
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       } else if (data.entries.length === 0) {
@@ -253,5 +256,3 @@ export default function UrinaryPage() {
     </>
   );
 }
-
-    
