@@ -52,21 +52,27 @@ export default function UrinaryPage() {
 
   const onSubmit: SubmitHandler<UrinaryFormInputs> = async (data) => {
     setIsSubmitting(true);
-    const logData: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date } = {
-      ...data,
-      date: new Date(data.date), // Convert ISO string back to Date object for Firestore
-      lossGrams: data.lossGrams ?? null,
-      padChanges: data.padChanges ?? null,
-    };
-    await addUrinaryLog(logData);
-    reset({ 
-        date: new Date().toISOString(), 
-        urgency: false, 
-        burning: false, 
-        lossGrams: null, 
-        padChanges: null 
-    });
-    setIsSubmitting(false);
+    try {
+      const logData: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date } = {
+        ...data,
+        date: new Date(data.date), 
+        lossGrams: data.lossGrams ?? null,
+        padChanges: data.padChanges ?? null,
+      };
+      await addUrinaryLog(logData);
+      reset({ 
+          date: new Date().toISOString(), 
+          urgency: false, 
+          burning: false, 
+          lossGrams: null, 
+          padChanges: null 
+      });
+    } catch (error) {
+      // Toast de erro é tratado pelo DataProvider
+      console.error("Erro ao submeter registro urinário:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

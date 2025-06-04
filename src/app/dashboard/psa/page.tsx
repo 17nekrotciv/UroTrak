@@ -46,18 +46,24 @@ export default function PSAPage() {
 
   const onSubmit: SubmitHandler<PSAFormInputs> = async (data) => {
     setIsSubmitting(true);
-    const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
-      ...data,
-      date: new Date(data.date),
-      psaValue: data.psaValue ?? null,
-    };
-    await addPSALog(logData);
-    reset({ 
-      date: new Date().toISOString(), 
-      psaValue: null, 
-      notes: '' 
-    });
-    setIsSubmitting(false);
+    try {
+      const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
+        ...data,
+        date: new Date(data.date),
+        psaValue: data.psaValue ?? null,
+      };
+      await addPSALog(logData);
+      reset({ 
+        date: new Date().toISOString(), 
+        psaValue: null, 
+        notes: '' 
+      });
+    } catch (error) {
+      // Toast de erro é tratado pelo DataProvider
+      console.error("Erro ao submeter registro de PSA:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
