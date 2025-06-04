@@ -1,7 +1,7 @@
 // src/app/dashboard/erectile/page.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,7 +14,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { ErectileLogEntry } from '@/types';
-import { Loader2, HeartPulse, Save } from 'lucide-react';
+import { Loader2, HeartPulse, Save, PlusCircle } from 'lucide-react'; // Added PlusCircle
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -38,19 +38,28 @@ const erectionQualityOptions = [
   { value: "full_sustained", label: "Ereção total e mantida" },
 ];
 
+const defaultFormValues: ErectileFormInputs = {
+  date: new Date().toISOString(),
+  erectionQuality: '',
+  medicationUsed: 'none',
+  medicationNotes: '',
+};
+
 export default function ErectilePage() {
   const { appData, addErectileLog, loadingData } = useData();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
-  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<ErectileFormInputs>({
+  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<ErectileFormInputs>({
     resolver: zodResolver(erectileSchema),
-    defaultValues: {
-      date: new Date().toISOString(),
-      erectionQuality: '',
-      medicationUsed: 'none',
-      medicationNotes: '',
-    },
+    defaultValues: defaultFormValues,
   });
+
+  useEffect(() => {
+    if (isDirty && actionState === 'addNext') {
+      setActionState('save');
+    }
+  }, [isDirty, actionState]);
 
   const onSubmit: SubmitHandler<ErectileFormInputs> = async (data) => {
     setIsSubmitting(true);
@@ -60,12 +69,8 @@ export default function ErectilePage() {
         date: new Date(data.date),
       };
       await addErectileLog(logData);
-      reset({
-        date: new Date().toISOString(),
-        erectionQuality: '',
-        medicationUsed: 'none',
-        medicationNotes: '',
-      });
+      reset(defaultFormValues);
+      setActionState('addNext');
     } catch (error) {
       // A lógica de toast de erro já está no addErectileLog (via DataProvider)
       console.error("Erro ao submeter registro de função erétil:", error);
@@ -73,6 +78,17 @@ export default function ErectilePage() {
       setIsSubmitting(false);
     }
   };
+
+  let ButtonIconComponent = Save;
+  let buttonText = "Salvar Registro";
+
+  if (isSubmitting) {
+    ButtonIconComponent = Loader2;
+    buttonText = "Salvando...";
+  } else if (actionState === 'addNext') {
+    ButtonIconComponent = PlusCircle;
+    buttonText = "Adicionar Novo Registro";
+  }
 
   return (
     <>
@@ -92,7 +108,7 @@ export default function ErectilePage() {
                 name="erectionQuality"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value} > {/* Alterado de defaultValue para value */}
+                  <Select onValueChange={field.onChange} value={field.value} >
                     <SelectTrigger id="erectionQuality" className={errors.erectionQuality ? "border-destructive" : ""}>
                       <SelectValue placeholder="Selecione a qualidade da ereção" />
                     </SelectTrigger>
@@ -115,7 +131,7 @@ export default function ErectilePage() {
                 render={({ field }) => (
                   <RadioGroup
                     onValueChange={field.onChange}
-                    value={field.value} // Usar value para RadioGroup controlado
+                    value={field.value} 
                     className="flex flex-col space-y-1"
                   >
                     <div className="flex items-center space-x-3"><RadioGroupItem value="none" id="med_none" /><Label htmlFor="med_none" className="font-normal">Não usei medicação</Label></div>
@@ -133,8 +149,8 @@ export default function ErectilePage() {
             </div>
             
             <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Salvar Registro
+              <ButtonIconComponent className={isSubmitting ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
+              {buttonText}
             </Button>
           </form>
         </CardContent>

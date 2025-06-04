@@ -1,7 +1,7 @@
 // src/app/dashboard/psa/page.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,7 +14,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { PSALogEntry } from '@/types';
-import { Loader2, ClipboardList, Save } from 'lucide-react';
+import { Loader2, ClipboardList, Save, PlusCircle } from 'lucide-react'; // Added PlusCircle
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,18 +31,27 @@ const psaSchema = z.object({
 
 type PSAFormInputs = z.infer<typeof psaSchema>;
 
+const defaultFormValues: PSAFormInputs = {
+  date: new Date().toISOString(),
+  psaValue: null,
+  notes: '',
+};
+
 export default function PSAPage() {
   const { appData, addPSALog, loadingData } = useData();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
-  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<PSAFormInputs>({
+  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<PSAFormInputs>({
     resolver: zodResolver(psaSchema),
-    defaultValues: {
-      date: new Date().toISOString(),
-      psaValue: null,
-      notes: '',
-    },
+    defaultValues: defaultFormValues,
   });
+
+  useEffect(() => {
+    if (isDirty && actionState === 'addNext') {
+      setActionState('save');
+    }
+  }, [isDirty, actionState]);
 
   const onSubmit: SubmitHandler<PSAFormInputs> = async (data) => {
     setIsSubmitting(true);
@@ -53,11 +62,8 @@ export default function PSAPage() {
         psaValue: data.psaValue ?? null,
       };
       await addPSALog(logData);
-      reset({ 
-        date: new Date().toISOString(), 
-        psaValue: null, 
-        notes: '' 
-      });
+      reset(defaultFormValues); 
+      setActionState('addNext');
     } catch (error) {
       // Toast de erro é tratado pelo DataProvider
       console.error("Erro ao submeter registro de PSA:", error);
@@ -65,6 +71,18 @@ export default function PSAPage() {
       setIsSubmitting(false);
     }
   };
+
+  let ButtonIconComponent = Save;
+  let buttonText = "Salvar Resultado PSA";
+
+  if (isSubmitting) {
+    ButtonIconComponent = Loader2;
+    buttonText = "Salvando...";
+  } else if (actionState === 'addNext') {
+    ButtonIconComponent = PlusCircle;
+    buttonText = "Adicionar Novo Resultado PSA";
+  }
+
 
   return (
     <>
@@ -90,8 +108,8 @@ export default function PSAPage() {
             </div>
             
             <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Salvar Resultado PSA
+              <ButtonIconComponent className={isSubmitting ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
+              {buttonText}
             </Button>
           </form>
         </CardContent>

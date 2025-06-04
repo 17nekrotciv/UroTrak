@@ -1,7 +1,7 @@
 // src/app/dashboard/urinary/page.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,7 +14,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { UrinaryLogEntry } from '@/types';
-import { Loader2, Droplets, Save } from 'lucide-react';
+import { Loader2, Droplets, Save, PlusCircle } from 'lucide-react'; // Added PlusCircle
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,20 +35,29 @@ const urinarySchema = z.object({
 
 type UrinaryFormInputs = z.infer<typeof urinarySchema>;
 
+const defaultFormValues: UrinaryFormInputs = {
+  date: new Date().toISOString(),
+  urgency: false,
+  burning: false,
+  lossGrams: null,
+  padChanges: null,
+};
+
 export default function UrinaryPage() {
   const { appData, addUrinaryLog, loadingData } = useData();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
-  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<UrinaryFormInputs>({
+  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<UrinaryFormInputs>({
     resolver: zodResolver(urinarySchema),
-    defaultValues: {
-      date: new Date().toISOString(),
-      urgency: false,
-      burning: false,
-      lossGrams: null,
-      padChanges: null,
-    },
+    defaultValues: defaultFormValues,
   });
+
+  useEffect(() => {
+    if (isDirty && actionState === 'addNext') {
+      setActionState('save');
+    }
+  }, [isDirty, actionState]);
 
   const onSubmit: SubmitHandler<UrinaryFormInputs> = async (data) => {
     setIsSubmitting(true);
@@ -60,13 +69,8 @@ export default function UrinaryPage() {
         padChanges: data.padChanges ?? null,
       };
       await addUrinaryLog(logData);
-      reset({ 
-          date: new Date().toISOString(), 
-          urgency: false, 
-          burning: false, 
-          lossGrams: null, 
-          padChanges: null 
-      });
+      reset(defaultFormValues);
+      setActionState('addNext');
     } catch (error) {
       // Toast de erro é tratado pelo DataProvider
       console.error("Erro ao submeter registro urinário:", error);
@@ -74,6 +78,17 @@ export default function UrinaryPage() {
       setIsSubmitting(false);
     }
   };
+
+  let ButtonIconComponent = Save;
+  let buttonText = "Salvar Registro";
+
+  if (isSubmitting) {
+    ButtonIconComponent = Loader2;
+    buttonText = "Salvando...";
+  } else if (actionState === 'addNext') {
+    ButtonIconComponent = PlusCircle;
+    buttonText = "Adicionar Novo Registro";
+  }
 
   return (
     <>
@@ -123,8 +138,8 @@ export default function UrinaryPage() {
             </div>
             
             <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Salvar Registro
+              <ButtonIconComponent className={isSubmitting ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
+              {buttonText}
             </Button>
           </form>
         </CardContent>
