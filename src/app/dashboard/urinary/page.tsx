@@ -1,8 +1,8 @@
 // src/app/dashboard/urinary/page.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
+import React, { useState } from 'react';
+import { useForm, Controller, type SubmitHandler, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -14,194 +14,197 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { UrinaryLogEntry } from '@/types';
-import { Loader2, Droplets, Save, PlusCircle } from 'lucide-react';
+import { Loader2, Droplets, Save, PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
-const urinarySchema = z.object({
+const singleUrinaryEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
   urgency: z.boolean().default(false),
   burning: z.boolean().default(false),
   lossGrams: z.preprocess(
-    (val) => (val === "" ? null : Number(val)),
+    (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
     z.number().min(0, "Deve ser zero ou maior").nullable().optional()
   ),
   padChanges: z.preprocess(
-    (val) => (val === "" ? null : Number(val)),
+    (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
     z.number().int("Deve ser um número inteiro").min(0, "Deve ser zero ou maior").nullable().optional()
   ),
 });
 
-type UrinaryFormInputs = z.infer<typeof urinarySchema>;
+const urinaryFormSchema = z.object({
+  entries: z.array(singleUrinaryEntrySchema).min(1, "Adicione pelo menos um registro."),
+});
 
-const defaultFormValues: UrinaryFormInputs = {
+type UrinaryFormInputs = z.infer<typeof urinaryFormSchema>;
+type SingleUrinaryEntryInput = z.infer<typeof singleUrinaryEntrySchema>;
+
+const getDefaultUrinaryEntry = (): SingleUrinaryEntryInput => ({
   date: new Date().toISOString(),
   urgency: false,
   burning: false,
   lossGrams: null,
   padChanges: null,
-};
+});
 
 export default function UrinaryPage() {
   const { appData, addUrinaryLog, loadingData } = useData();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
-  const { control, register, handleSubmit, reset, watch, formState: { errors } } = useForm<UrinaryFormInputs>({
-    resolver: zodResolver(urinarySchema),
-    defaultValues: defaultFormValues,
+  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<UrinaryFormInputs>({
+    resolver: zodResolver(urinaryFormSchema),
+    defaultValues: {
+      entries: [getDefaultUrinaryEntry()],
+    },
   });
 
-  const watchedFields = watch(); // Observa todos os campos
-
-  useEffect(() => {
-    // Se o formulário foi modificado pelo usuário E o estado do botão é 'addNext'
-    // (ou seja, estava pronto para um novo registro, mas o usuário começou a editar),
-    // então redefina o estado do botão para 'save'.
-    // Comparamos os valores atuais com os defaultFormValues para simular 'isDirty'
-    // de uma forma que nos dá mais controle após o reset.
-    let dirty = false;
-    for (const key in watchedFields) {
-      const typedKey = key as keyof UrinaryFormInputs;
-      if (watchedFields[typedKey] !== defaultFormValues[typedKey]) {
-         // Tratamento especial para data, pois new Date().toISOString() sempre será diferente
-        if (typedKey === 'date' && actionState === 'addNext') {
-            // Se for a data e estivermos no modo 'addNext', consideramos 'dirty' se o usuário mudar a data
-            // (o reset já terá definido uma nova data padrão para 'addNext')
-            // Esta comparação é simplista; para datas, pode precisar de uma lógica mais robusta se o reset da data
-            // for para um valor diferente do new Date() inicial do defaultFormValues.
-            // No entanto, com `reset(defaultFormValues)` e `defaultFormValues.date = new Date().toISOString()`,
-            // a data sempre será "nova" após o reset, então uma simples edição a tornará "dirty".
-        } else if (typedKey !== 'date') {
-          dirty = true;
-          break;
-        }
-      }
-    }
-    // Uma forma mais simples de verificar se algo mudou desde o 'defaultFormValues'
-    // após o reset para o modo 'addNext'.
-    const hasUserMadeChanges = JSON.stringify(watchedFields) !== JSON.stringify(defaultFormValues);
-
-
-    if (hasUserMadeChanges && actionState === 'addNext') {
-       // Verifica se algum valor (exceto a data que é sempre nova) mudou desde o estado 'defaultFormValues'
-        const valuesChanged = (Object.keys(defaultFormValues) as Array<keyof UrinaryFormInputs>).some(key => {
-            if (key === 'date') return false; // Ignora a data para esta verificação específica
-            return watchedFields[key] !== defaultFormValues[key];
-        });
-
-        if(valuesChanged) {
-            setActionState('save');
-        }
-    }
-  }, [watchedFields, actionState, defaultFormValues]);
-
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "entries",
+  });
 
   const onSubmit: SubmitHandler<UrinaryFormInputs> = async (data) => {
     setIsSubmitting(true);
-    try {
-      const logData: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date } = {
-        ...data,
-        date: new Date(data.date), 
-        lossGrams: data.lossGrams ?? null,
-        padChanges: data.padChanges ?? null,
-      };
-      await addUrinaryLog(logData);
-      // Recria defaultFormValues para ter a data atual para o próximo registro
-      const newDefaultFormValues = {
-        ...defaultFormValues,
-        date: new Date().toISOString(), 
-        // Mantém os outros campos como padrão para um formulário "limpo"
-        urgency: false,
-        burning: false,
-        lossGrams: null,
-        padChanges: null,
-      };
-      reset(newDefaultFormValues); 
-      setActionState('addNext');
-    } catch (error) {
-      console.error("Erro ao submeter registro urinário:", error);
-    } finally {
-      setIsSubmitting(false);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const entry of data.entries) {
+      try {
+        const logData: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date } = {
+          ...entry,
+          date: new Date(entry.date),
+          lossGrams: entry.lossGrams ?? null,
+          padChanges: entry.padChanges ?? null,
+        };
+        await addUrinaryLog(logData); // Assumindo que addUrinaryLog agora não faz toast individual
+        successCount++;
+      } catch (error) {
+        console.error("Erro ao submeter registro urinário individual:", error);
+        errorCount++;
+      }
+    }
+
+    setIsSubmitting(false);
+
+    if (successCount > 0 && errorCount === 0) {
+      toast({ title: "Sucesso!", description: `${successCount} registro(s) urinário(s) salvo(s) com sucesso.` });
+      reset({ entries: [getDefaultUrinaryEntry()] });
+    } else if (successCount > 0 && errorCount > 0) {
+      toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s), ${errorCount} falhou(ram).`, variant: "default" });
+      // Não reseta para permitir correção dos que falharam, ou o usuário decide.
+      // Idealmente, teríamos um feedback mais granular aqui.
+    } else if (errorCount > 0) {
+      toast({ title: "Erro", description: `Falha ao salvar ${errorCount} registro(s) urinário(s).`, variant: "destructive" });
     }
   };
-
-  let ButtonIconComponent = Save;
-  let buttonText = "Salvar Registro";
-
-  if (isSubmitting) {
-    ButtonIconComponent = Loader2;
-    buttonText = "Salvando...";
-  } else if (actionState === 'addNext') {
-    ButtonIconComponent = PlusCircle;
-    buttonText = "Adicionar Novo Registro";
-  }
-
-  // Quando qualquer campo do formulário muda, e o estado é 'addNext', reverte para 'save'
-  const handleFormChange = () => {
-    if (actionState === 'addNext') {
-      setActionState('save');
-    }
-  };
-
 
   return (
     <>
-      <PageHeader title="Sintomas Urinários" description="Registre seus sintomas urinários aqui." icon={Droplets} />
+      <PageHeader title="Sintomas Urinários" description="Registre seus sintomas urinários aqui. Adicione múltiplos registros de uma vez." icon={Droplets} />
       
-      <Card className="mb-8 shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl">Novo Registro Urinário</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} onChange={handleFormChange} className="space-y-6">
-            <DatePickerField control={control} name="date" label="Data do Registro" error={errors.date?.message} />
-
-            <div className="flex items-center space-x-3">
-              <Controller
-                name="urgency"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox id="urgency" checked={field.value} onCheckedChange={field.onChange} />
-                )}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {fields.map((field, index) => (
+          <Card key={field.id} className="mb-6 shadow-md p-4 relative">
+            <CardHeader className="p-2 -mt-2">
+              <CardTitle className="font-headline text-lg">Registro Urinário {index + 1}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-2">
+              <DatePickerField 
+                control={control} 
+                name={`entries.${index}.date`} 
+                label="Data do Registro" 
+                error={errors.entries?.[index]?.date?.message} 
               />
-              <Label htmlFor="urgency" className="font-normal">Sentiu urgência para urinar?</Label>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Controller
-                name="burning"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox id="burning" checked={field.value} onCheckedChange={field.onChange} />
-                )}
-              />
-              <Label htmlFor="burning" className="font-normal">Sentiu ardência ao urinar?</Label>
-            </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="lossGrams">Perda em gramas (opcional)</Label>
-                <Input id="lossGrams" type="number" step="any" placeholder="Ex: 50" {...register("lossGrams")} />
-                {errors.lossGrams && <p className="text-sm text-destructive">{errors.lossGrams.message}</p>}
+              <div className="flex items-center space-x-3">
+                <Controller
+                  name={`entries.${index}.urgency`}
+                  control={control}
+                  render={({ field: controllerField }) => (
+                    <Checkbox 
+                      id={`entries.${index}.urgency`} 
+                      checked={controllerField.value} 
+                      onCheckedChange={controllerField.onChange} 
+                    />
+                  )}
+                />
+                <Label htmlFor={`entries.${index}.urgency`} className="font-normal">Sentiu urgência para urinar?</Label>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="padChanges">Trocas de absorventes (opcional)</Label>
-                <Input id="padChanges" type="number" placeholder="Ex: 3" {...register("padChanges")} />
-                {errors.padChanges && <p className="text-sm text-destructive">{errors.padChanges.message}</p>}
+              
+              <div className="flex items-center space-x-3">
+                <Controller
+                  name={`entries.${index}.burning`}
+                  control={control}
+                  render={({ field: controllerField }) => (
+                    <Checkbox 
+                      id={`entries.${index}.burning`} 
+                      checked={controllerField.value} 
+                      onCheckedChange={controllerField.onChange} 
+                    />
+                  )}
+                />
+                <Label htmlFor={`entries.${index}.burning`} className="font-normal">Sentiu ardência ao urinar?</Label>
               </div>
-            </div>
-            
-            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-              <ButtonIconComponent className={isSubmitting ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
-              {buttonText}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
-      <Card className="shadow-lg">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`entries.${index}.lossGrams`}>Perda em gramas (opcional)</Label>
+                  <Input 
+                    id={`entries.${index}.lossGrams`} 
+                    type="number" 
+                    step="any" 
+                    placeholder="Ex: 50" 
+                    {...register(`entries.${index}.lossGrams`)} 
+                  />
+                  {errors.entries?.[index]?.lossGrams && <p className="text-sm text-destructive">{errors.entries?.[index]?.lossGrams?.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`entries.${index}.padChanges`}>Trocas de absorventes (opcional)</Label>
+                  <Input 
+                    id={`entries.${index}.padChanges`} 
+                    type="number" 
+                    placeholder="Ex: 3" 
+                    {...register(`entries.${index}.padChanges`)} 
+                  />
+                  {errors.entries?.[index]?.padChanges && <p className="text-sm text-destructive">{errors.entries?.[index]?.padChanges?.message}</p>}
+                </div>
+              </div>
+              {fields.length > 1 && (
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={() => remove(index)} 
+                  className="absolute top-4 right-4"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remover
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button type="button" variant="outline" onClick={() => append(getDefaultUrinaryEntry())} className="w-full sm:w-auto">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Outro Registro Urinário
+          </Button>
+          <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || fields.length === 0}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Salvar {fields.length > 1 ? `${fields.length} Registros` : 'Registro'}
+          </Button>
+        </div>
+        {errors.entries?.root && <p className="text-sm text-destructive mt-2">{errors.entries.root.message}</p>}
+        {errors.entries && !errors.entries.root && errors.entries.length > 0 && (
+            <p className="text-sm text-destructive mt-2">Verifique os erros nos registros acima.</p>
+        )}
+      </form>
+
+      <Card className="mt-8 shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline text-xl">Histórico de Registros Urinários</CardTitle>
         </CardHeader>

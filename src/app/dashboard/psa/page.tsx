@@ -1,8 +1,8 @@
 // src/app/dashboard/psa/page.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import React, { useState } from 'react';
+import { useForm, type SubmitHandler, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -14,112 +14,156 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { PSALogEntry } from '@/types';
-import { Loader2, ClipboardList, Save, PlusCircle } from 'lucide-react';
+import { Loader2, ClipboardList, Save, PlusCircle, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
-
-const psaSchema = z.object({
+const singlePsaEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
   psaValue: z.preprocess(
-    (val) => (val === "" ? null : Number(val)),
+    (val) => (val === "" || val === undefined || val === null ? null : Number(val)),
     z.number().min(0, "Valor do PSA deve ser zero ou maior.").nullable()
   ),
   notes: z.string().optional(),
 });
 
-type PSAFormInputs = z.infer<typeof psaSchema>;
+const psaFormSchema = z.object({
+  entries: z.array(singlePsaEntrySchema).min(1, "Adicione pelo menos um resultado."),
+});
 
-const defaultFormValues: PSAFormInputs = {
+type PSAFormInputs = z.infer<typeof psaFormSchema>;
+type SinglePSAEntryInput = z.infer<typeof singlePsaEntrySchema>;
+
+const getDefaultPSAEntry = (): SinglePSAEntryInput => ({
   date: new Date().toISOString(),
   psaValue: null,
   notes: '',
-};
+});
 
 export default function PSAPage() {
   const { appData, addPSALog, loadingData } = useData();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [actionState, setActionState] = useState<'save' | 'addNext'>('save');
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<PSAFormInputs>({
-    resolver: zodResolver(psaSchema),
-    defaultValues: defaultFormValues,
+    resolver: zodResolver(psaFormSchema),
+    defaultValues: {
+      entries: [getDefaultPSAEntry()],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "entries",
   });
 
   const onSubmit: SubmitHandler<PSAFormInputs> = async (data) => {
     setIsSubmitting(true);
-    try {
-      const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
-        ...data,
-        date: new Date(data.date),
-        psaValue: data.psaValue ?? null,
-      };
-      await addPSALog(logData);
-      const newDefaultFormValues = {
-        ...defaultFormValues,
-        date: new Date().toISOString(),
-        psaValue: null,
-        notes: '',
-      };
-      reset(newDefaultFormValues); 
-      setActionState('addNext');
-    } catch (error) {
-      console.error("Erro ao submeter registro de PSA:", error);
-    } finally {
-      setIsSubmitting(false);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const entry of data.entries) {
+      try {
+        const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
+          ...entry,
+          date: new Date(entry.date),
+          psaValue: entry.psaValue ?? null,
+        };
+        await addPSALog(logData);
+        successCount++;
+      } catch (error) {
+        console.error("Erro ao submeter resultado PSA individual:", error);
+        errorCount++;
+      }
     }
-  };
+    
+    setIsSubmitting(false);
 
-  let ButtonIconComponent = Save;
-  let buttonText = "Salvar Resultado PSA";
-
-  if (isSubmitting) {
-    ButtonIconComponent = Loader2;
-    buttonText = "Salvando...";
-  } else if (actionState === 'addNext') {
-    ButtonIconComponent = PlusCircle;
-    buttonText = "Adicionar Novo Resultado PSA";
-  }
-
-  const handleFormChange = () => {
-    if (actionState === 'addNext') {
-      setActionState('save');
+    if (successCount > 0 && errorCount === 0) {
+      toast({ title: "Sucesso!", description: `${successCount} resultado(s) PSA salvo(s) com sucesso.` });
+      reset({ entries: [getDefaultPSAEntry()] });
+    } else if (successCount > 0 && errorCount > 0) {
+      toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s), ${errorCount} falhou(ram).`, variant: "default" });
+    } else if (errorCount > 0) {
+      toast({ title: "Erro", description: `Falha ao salvar ${errorCount} resultado(s) PSA.`, variant: "destructive" });
     }
   };
 
   return (
     <>
-      <PageHeader title="Resultados PSA" description="Registre seus resultados de exames PSA." icon={ClipboardList} />
+      <PageHeader title="Resultados PSA" description="Registre seus resultados de exames PSA. Adicione múltiplos resultados de uma vez." icon={ClipboardList} />
       
-      <Card className="mb-8 shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl">Novo Registro de PSA</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} onChange={handleFormChange} className="space-y-6">
-            <DatePickerField control={control} name="date" label="Data do Exame" error={errors.date?.message} />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {fields.map((field, index) => (
+          <Card key={field.id} className="mb-6 shadow-md p-4 relative">
+            <CardHeader className="p-2 -mt-2">
+              <CardTitle className="font-headline text-lg">Resultado PSA {index + 1}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-2">
+              <DatePickerField 
+                control={control} 
+                name={`entries.${index}.date`} 
+                label="Data do Exame" 
+                error={errors.entries?.[index]?.date?.message} 
+              />
 
-            <div className="space-y-2">
-              <Label htmlFor="psaValue">Valor do PSA (ng/mL)</Label>
-              <Input id="psaValue" type="number" step="0.01" placeholder="Ex: 0.05" {...register("psaValue")} className={errors.psaValue ? "border-destructive" : ""} />
-              {errors.psaValue && <p className="text-sm text-destructive">{errors.psaValue.message}</p>}
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor={`entries.${index}.psaValue`}>Valor do PSA (ng/mL)</Label>
+                <Input 
+                  id={`entries.${index}.psaValue`} 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="Ex: 0.05" 
+                  {...register(`entries.${index}.psaValue`)} 
+                  className={errors.entries?.[index]?.psaValue ? "border-destructive" : ""} 
+                />
+                {errors.entries?.[index]?.psaValue && <p className="text-sm text-destructive">{errors.entries?.[index]?.psaValue?.message}</p>}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas Adicionais (opcional)</Label>
-              <Textarea id="notes" placeholder="Ex: Laboratório, observações médicas, etc." {...register("notes")} />
-            </div>
-            
-            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-              <ButtonIconComponent className={isSubmitting ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
-              {buttonText}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="space-y-2">
+                <Label htmlFor={`entries.${index}.notes`}>Notas Adicionais (opcional)</Label>
+                <Textarea 
+                  id={`entries.${index}.notes`} 
+                  placeholder="Ex: Laboratório, observações médicas, etc." 
+                  {...register(`entries.${index}.notes`)} 
+                />
+              </div>
+              
+              {fields.length > 1 && (
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={() => remove(index)} 
+                  className="absolute top-4 right-4"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remover
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button type="button" variant="outline" onClick={() => append(getDefaultPSAEntry())} className="w-full sm:w-auto">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Adicionar Outro Resultado PSA
+          </Button>
+          <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || fields.length === 0}>
+            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Salvar {fields.length > 1 ? `${fields.length} Resultados` : 'Resultado'}
+          </Button>
+        </div>
+        {errors.entries?.root && <p className="text-sm text-destructive mt-2">{errors.entries.root.message}</p>}
+        {errors.entries && !errors.entries.root && errors.entries.length > 0 && (
+            <p className="text-sm text-destructive mt-2">Verifique os erros nos registros acima.</p>
+        )}
+      </form>
 
-      <Card className="shadow-lg">
+      <Card className="mt-8 shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline text-xl">Histórico de Resultados PSA</CardTitle>
         </CardHeader>
