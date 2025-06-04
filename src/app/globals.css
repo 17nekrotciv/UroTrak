@@ -2,59 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* Removed specific body font-family to allow Tailwind's font-body to apply */
 
 @layer base {
   :root {
-    --background: 213 100% 97%; /* Light Blue from image */
-    --foreground: 210 23% 45%; /* Muted Gray/Blue for text */
+    --background: 220 30% 97%; /* Very light grayish blue, slightly off-white */
+    --foreground: 215 25% 30%; /* Darker, more saturated grayish blue for main text */
     
-    --card: 213 100% 97%; 
-    --card-foreground: 210 23% 45%;
+    --card: 0 0% 100%;         /* White cards */
+    --card-foreground: 215 25% 30%;
     
-    --popover: 213 100% 97%;
-    --popover-foreground: 210 23% 45%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 30%;
     
-    --primary: 207 78% 64%; /* Medium Blue from image */
-    --primary-foreground: 210 100% 98%; /* White/Very Light for text on primary */
+    --primary: 210 70% 55%;   /* Calm, medium blue for buttons, active icons */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
     
-    --secondary: 210 60% 92%; /* Lighter, slightly desaturated blue */
-    --secondary-foreground: 210 15% 35%; 
+    --secondary: 210 70% 90%;  /* Lighter blue for active item backgrounds (like sidebar item) */
+    --secondary-foreground: 210 70% 45%; /* Darker blue for text on secondary elements */
     
-    --muted: 210 50% 95%; 
-    --muted-foreground: 210 20% 55%; /* Muted text color from image */
+    --muted: 220 25% 92%;     /* Lighter grey-blue for muted backgrounds */
+    --muted-foreground: 215 20% 55%; /* Softer text for descriptions */
     
-    --accent: 207 70% 75%; /* A slightly lighter/softer version of primary */
-    --accent-foreground: 210 15% 25%; 
+    --accent: 210 70% 65%;     /* A slightly lighter/softer version of primary for hover states */
+    --accent-foreground: 0 0% 100%; 
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 210 40% 88%; /* Light blue-gray border */
-    --input: 210 40% 94%; 
-    --ring: 207 78% 64%; /* Primary color for ring */
+    --border: 210 30% 88%;     /* Light blue-gray border */
+    --input: 0 0% 100%;         /* White input background */
+    --ring: 210 70% 55%;       /* Primary color for focus rings */
 
-    --chart-1: 207 78% 64%; /* Primary */
-    --chart-2: 207 70% 75%; /* Accent */
-    --chart-3: 197 37% 54%; 
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-1: 210 70% 55%; 
+    --chart-2: 190 70% 55%; 
+    --chart-3: 220 60% 65%; 
+    --chart-4: 30 80% 65%;
+    --chart-5: 27 87% 67%; /* Kept original chart colors, can be adjusted if needed */
     --radius: 0.5rem;
 
-    /* Sidebar specific theme adjustments */
-    --sidebar-background: 207 70% 55%; /* Darker shade of primary blue */
-    --sidebar-foreground: 0 0% 100%;   /* White text */
-    --sidebar-primary: 0 0% 100%;      /* White for active/primary items in sidebar */
-    --sidebar-primary-foreground: 207 78% 64%; /* Primary blue text on primary items */
-    --sidebar-accent: 207 75% 70%;    /* Lighter shade for hover/accent in sidebar */
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 207 60% 50%;
-    --sidebar-ring: 0 0% 100%;
+    /* Removed specific --sidebar-background, --sidebar-foreground etc. */
+    /* Sidebar styling will rely on the main theme variables and component-specific styles. */
+    /* For example, active sidebar items use variants of --primary and --secondary. */
   }
 
   .dark {
+    /* Keeping dark theme variables as they were, can be adjusted later if needed */
     --background: 210 15% 12%; 
     --foreground: 210 30% 90%; 
 
@@ -64,8 +57,8 @@ body {
     --popover: 210 15% 15%;
     --popover-foreground: 210 30% 90%;
 
-    --primary: 207 78% 64%; 
-    --primary-foreground: 210 10% 10%; 
+    --primary: 210 70% 55%; /* Updated primary for dark mode consistency */
+    --primary-foreground: 0 0% 100%; /* Ensure contrast */
 
     --secondary: 210 20% 25%; 
     --secondary-foreground: 210 30% 85%;
@@ -73,24 +66,17 @@ body {
     --muted: 210 20% 22%;
     --muted-foreground: 210 25% 65%; 
 
-    --accent: 207 70% 55%; 
-    --accent-foreground: 210 30% 95%;
+    --accent: 210 70% 45%; /* Darker accent for dark mode */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 210 20% 30%;
     --input: 210 20% 28%;
-    --ring: 207 78% 64%;
+    --ring: 210 70% 55%;
 
-    --sidebar-background: 210 15% 10%;
-    --sidebar-foreground: 210 30% 88%;
-    --sidebar-primary: 207 78% 64%;
-    --sidebar-primary-foreground: 210 10% 5%;
-    --sidebar-accent: 210 15% 20%;
-    --sidebar-accent-foreground: 210 30% 92%;
-    --sidebar-border: 210 15% 18%;
-    --sidebar-ring: 207 78% 64%;
+    /* Sidebar in dark mode will use these general dark theme variables */
   }
 }
 
