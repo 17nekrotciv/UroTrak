@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import AuthLayout from '@/components/auth/AuthLayout';
 import { Loader2, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { FcGoogle } from 'react-icons/fc';
+import { FaFacebook, FaApple, FaMicrosoft } from 'react-icons/fa';
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
@@ -42,8 +44,8 @@ export default function SignupPage() {
       await setDoc(userDocRef, {
         displayName: customDisplayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário Anônimo',
         email: firebaseUser.email,
-        createdAt: Timestamp.fromDate(new Date()),
-        providerId: firebaseUser.providerData[0]?.providerId || 'email', // default to 'email' for email/pass
+        createdAt: Timestamp.fromDate(new Date()), // Use Firestore Timestamp
+        providerId: firebaseUser.providerData[0]?.providerId || 'email',
       });
     }
   };
@@ -56,8 +58,10 @@ export default function SignupPage() {
   const onSignupError = (error: any, providerName?: string) => {
     console.error(`${providerName || 'Email/Password'} Signup error:`, error);
     let errorMessage = `Ocorreu um erro ao tentar criar a conta${providerName ? ` com ${providerName}` : ''}. Tente novamente.`;
-    if (error.code) {
-      switch (error.code) {
+    
+    if (error && typeof error === 'object' && 'code' in error) {
+      const firebaseError = error as { code: string; message?: string };
+      switch (firebaseError.code) {
         case 'auth/email-already-in-use':
           errorMessage = "Este email já está cadastrado. Tente fazer login ou use um email diferente.";
           break;
@@ -80,15 +84,16 @@ export default function SignupPage() {
         case 'auth/popup-blocked':
           errorMessage = `O popup de cadastro com ${providerName} foi bloqueado pelo navegador. Por favor, habilite popups para este site.`;
           break;
-        case 'permission-denied':
-          errorMessage = "Falha ao salvar dados do usuário: permissão negada. Verifique as regras de segurança do Firestore.";
-          break;
+        case 'permission-denied': // Firestore permission error
+           errorMessage = "Falha ao salvar dados do usuário: permissão negada. Verifique as regras de segurança do Firestore.";
+           break;
         default:
-          errorMessage = `Erro no cadastro (${error.code})${providerName ? ` com ${providerName}` : ''}: ${error.message || 'Tente novamente.'}`;
+          errorMessage = `Erro no cadastro (${firebaseError.code})${providerName ? ` com ${providerName}` : ''}: ${firebaseError.message || 'Tente novamente.'}`;
       }
-    } else if (error.message) {
-      errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+       errorMessage = (error as {message: string}).message;
     }
+    
     toast({ title: "Erro no Cadastro", description: errorMessage, variant: "destructive" });
   };
 
@@ -98,7 +103,7 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       await updateProfile(user, { displayName: data.displayName });
-      await handleFirestoreUser(user, data.displayName);
+      await handleFirestoreUser(user, data.displayName); // Pass displayName to ensure it's set correctly
       onSignupSuccess();
     } catch (error: any) {
       onSignupError(error);
@@ -121,10 +126,10 @@ export default function SignupPage() {
   };
 
   const socialProviders = [
-    { name: "Google", provider: googleProvider, disabled: false },
-    { name: "Facebook", provider: facebookProvider, disabled: true },
-    { name: "Apple", provider: appleProvider, disabled: true },
-    { name: "Microsoft", provider: microsoftProvider, disabled: true },
+    { name: "Google", provider: googleProvider, icon: FcGoogle, disabled: false },
+    { name: "Facebook", provider: facebookProvider, icon: FaFacebook, disabled: true },
+    { name: "Apple", provider: appleProvider, icon: FaApple, disabled: true },
+    { name: "Microsoft", provider: microsoftProvider, icon: FaMicrosoft, disabled: true },
   ];
 
   return (
@@ -188,8 +193,7 @@ export default function SignupPage() {
             {socialLoading === sp.name ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-               // Placeholder for actual icons
-              <span className="mr-2 h-4 w-4">{sp.name.substring(0,1)}</span>
+              <sp.icon className="mr-2 h-5 w-5" />
             )}
             Continuar com {sp.name}
             {sp.disabled && <span className="ml-2 text-xs text-muted-foreground">(Configurar)</span>}

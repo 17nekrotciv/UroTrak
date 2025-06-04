@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import AuthLayout from '@/components/auth/AuthLayout';
 import { Loader2, LogIn } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { FcGoogle } from 'react-icons/fc';
+import { FaFacebook, FaApple, FaMicrosoft } from 'react-icons/fa';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email inválido." }),
@@ -82,7 +84,8 @@ export default function LoginPage() {
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      await handleFirestoreUser(userCredential.user);
       onLoginSuccess();
     } catch (error: any) {
       onLoginError(error);
@@ -105,10 +108,10 @@ export default function LoginPage() {
   };
 
   const socialProviders = [
-    { name: "Google", provider: googleProvider, disabled: false },
-    { name: "Facebook", provider: facebookProvider, disabled: true }, // Disabled until user configures
-    { name: "Apple", provider: appleProvider, disabled: true }, // Disabled until user configures
-    { name: "Microsoft", provider: microsoftProvider, disabled: true }, // Disabled until user configures
+    { name: "Google", provider: googleProvider, icon: FcGoogle, disabled: false },
+    { name: "Facebook", provider: facebookProvider, icon: FaFacebook, disabled: true },
+    { name: "Apple", provider: appleProvider, icon: FaApple, disabled: true },
+    { name: "Microsoft", provider: microsoftProvider, icon: FaMicrosoft, disabled: true },
   ];
 
   return (
@@ -160,8 +163,7 @@ export default function LoginPage() {
             {socialLoading === sp.name ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              // Placeholder for actual icons - consider adding SVGs or a library like react-icons
-              <span className="mr-2 h-4 w-4">{sp.name.substring(0,1)}</span> 
+              <sp.icon className="mr-2 h-5 w-5" />
             )}
             Entrar com {sp.name}
             {sp.disabled && <span className="ml-2 text-xs text-muted-foreground">(Configurar)</span>}
