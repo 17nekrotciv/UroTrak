@@ -1,3 +1,4 @@
+
 // src/app/dashboard/urinary/page.tsx
 "use client";
 
@@ -93,7 +94,7 @@ export default function UrinaryPage() {
       }
     }
 
-    setIsSubmitting(false);
+    setIsSubmitting(false); 
 
     if (successCount > 0) {
       if (errorCount === 0) {
@@ -101,15 +102,13 @@ export default function UrinaryPage() {
       } else {
         toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
       }
-      reset({ entries: [getDefaultUrinaryEntry()] });
     } else if (errorCount > 0) {
       toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-      // Não resetar se tudo falhou, para permitir correção.
     } else if (data.entries.length === 0) {
       toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
     }
-    // Se data.entries.length > 0 mas successCount e errorCount são 0, algo inesperado ocorreu.
-    // O DataProvider lançar erro deve prevenir isso.
+    
+    reset({ entries: [getDefaultUrinaryEntry()] });
   };
 
   return (

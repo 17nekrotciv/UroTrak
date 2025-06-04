@@ -1,3 +1,4 @@
+
 // src/app/dashboard/psa/page.tsx
 "use client";
 
@@ -93,13 +94,13 @@ export default function PSAPage() {
       } else {
         toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
       }
-      reset({ entries: [getDefaultPSAEntry()] });
     } else if (errorCount > 0) {
       toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-      // Não resetar se tudo falhou
     } else if (data.entries.length === 0) {
       toast({ title: "Nenhum registro", description: "Adicione pelo menos um resultado para salvar.", variant: "default" });
     }
+
+    reset({ entries: [getDefaultPSAEntry()] });
   };
 
   return (

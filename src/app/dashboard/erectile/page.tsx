@@ -1,3 +1,4 @@
+
 // src/app/dashboard/erectile/page.tsx
 "use client";
 
@@ -100,13 +101,13 @@ export default function ErectilePage() {
       } else {
         toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
       }
-      reset({ entries: [getDefaultErectileEntry()] });
     } else if (errorCount > 0) {
       toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-      // Não resetar se tudo falhou
     } else if (data.entries.length === 0) {
       toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
     }
+    
+    reset({ entries: [getDefaultErectileEntry()] });
   };
   
   return (
@@ -135,7 +136,7 @@ export default function ErectilePage() {
                   render={({ field: controllerField }) => (
                     <Select 
                       onValueChange={controllerField.onChange} 
-                      value={controllerField.value} // Use value here
+                      value={controllerField.value}
                     >
                       <SelectTrigger id={`entries.${index}.erectionQuality`} className={errors.entries?.[index]?.erectionQuality ? "border-destructive" : ""}>
                         <SelectValue placeholder="Selecione a qualidade da ereção" />
