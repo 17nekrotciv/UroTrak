@@ -54,18 +54,24 @@ export default function ErectilePage() {
 
   const onSubmit: SubmitHandler<ErectileFormInputs> = async (data) => {
     setIsSubmitting(true);
-    const logData: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date } = {
-      ...data,
-      date: new Date(data.date),
-    };
-    await addErectileLog(logData);
-    reset({ 
-      date: new Date().toISOString(), 
-      erectionQuality: '', 
-      medicationUsed: 'none',
-      medicationNotes: '',
-    });
-    setIsSubmitting(false);
+    try {
+      const logData: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date } = {
+        ...data,
+        date: new Date(data.date),
+      };
+      await addErectileLog(logData);
+      reset({
+        date: new Date().toISOString(),
+        erectionQuality: '',
+        medicationUsed: 'none',
+        medicationNotes: '',
+      });
+    } catch (error) {
+      // A lógica de toast de erro já está no addErectileLog (via DataProvider)
+      console.error("Erro ao submeter registro de função erétil:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -86,7 +92,7 @@ export default function ErectilePage() {
                 name="erectionQuality"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} > {/* Alterado de defaultValue para value */}
                     <SelectTrigger id="erectionQuality" className={errors.erectionQuality ? "border-destructive" : ""}>
                       <SelectValue placeholder="Selecione a qualidade da ereção" />
                     </SelectTrigger>
@@ -109,7 +115,7 @@ export default function ErectilePage() {
                 render={({ field }) => (
                   <RadioGroup
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value} // Usar value para RadioGroup controlado
                     className="flex flex-col space-y-1"
                   >
                     <div className="flex items-center space-x-3"><RadioGroupItem value="none" id="med_none" /><Label htmlFor="med_none" className="font-normal">Não usei medicação</Label></div>
