@@ -8,7 +8,7 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, signInWithPopup, type AuthProvider as FirebaseAuthProvider, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db, googleProvider, facebookProvider, appleProvider, microsoftProvider } from '@/lib/firebase';
+import { auth, db, googleProvider } from '@/lib/firebase';
 import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import { Loader2, LogIn } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { FcGoogle } from 'react-icons/fc';
-import { FaFacebook, FaApple, FaMicrosoft } from 'react-icons/fa';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email inválido." }),
@@ -109,9 +108,6 @@ export default function LoginPage() {
 
   const socialProviders = [
     { name: "Google", provider: googleProvider, icon: FcGoogle, disabled: false },
-    { name: "Facebook", provider: facebookProvider, icon: FaFacebook, disabled: true },
-    { name: "Apple", provider: appleProvider, icon: FaApple, disabled: true },
-    { name: "Microsoft", provider: microsoftProvider, icon: FaMicrosoft, disabled: true },
   ];
 
   return (
@@ -166,7 +162,6 @@ export default function LoginPage() {
               <sp.icon className="mr-2 h-5 w-5" />
             )}
             Entrar com {sp.name}
-            {sp.disabled && <span className="ml-2 text-xs text-muted-foreground">(Configurar)</span>}
           </Button>
         ))}
       </div>

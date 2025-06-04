@@ -8,7 +8,7 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, type AuthProvider as FirebaseAuthProvider, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db, googleProvider, facebookProvider, appleProvider, microsoftProvider } from '@/lib/firebase';
+import { auth, db, googleProvider } from '@/lib/firebase';
 import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import { Loader2, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { FcGoogle } from 'react-icons/fc';
-import { FaFacebook, FaApple, FaMicrosoft } from 'react-icons/fa';
 
 const signupSchema = z.object({
   displayName: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
@@ -44,7 +43,7 @@ export default function SignupPage() {
       await setDoc(userDocRef, {
         displayName: customDisplayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário Anônimo',
         email: firebaseUser.email,
-        createdAt: Timestamp.fromDate(new Date()), // Use Firestore Timestamp
+        createdAt: Timestamp.fromDate(new Date()),
         providerId: firebaseUser.providerData[0]?.providerId || 'email',
       });
     }
@@ -84,7 +83,7 @@ export default function SignupPage() {
         case 'auth/popup-blocked':
           errorMessage = `O popup de cadastro com ${providerName} foi bloqueado pelo navegador. Por favor, habilite popups para este site.`;
           break;
-        case 'permission-denied': // Firestore permission error
+        case 'permission-denied': 
            errorMessage = "Falha ao salvar dados do usuário: permissão negada. Verifique as regras de segurança do Firestore.";
            break;
         default:
@@ -103,7 +102,7 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       await updateProfile(user, { displayName: data.displayName });
-      await handleFirestoreUser(user, data.displayName); // Pass displayName to ensure it's set correctly
+      await handleFirestoreUser(user, data.displayName);
       onSignupSuccess();
     } catch (error: any) {
       onSignupError(error);
@@ -116,7 +115,7 @@ export default function SignupPage() {
     setSocialLoading(providerName);
     try {
       const result = await signInWithPopup(auth, provider);
-      await handleFirestoreUser(result.user); // displayName will come from provider
+      await handleFirestoreUser(result.user); 
       onSignupSuccess();
     } catch (error: any) {
       onSignupError(error, providerName);
@@ -127,9 +126,6 @@ export default function SignupPage() {
 
   const socialProviders = [
     { name: "Google", provider: googleProvider, icon: FcGoogle, disabled: false },
-    { name: "Facebook", provider: facebookProvider, icon: FaFacebook, disabled: true },
-    { name: "Apple", provider: appleProvider, icon: FaApple, disabled: true },
-    { name: "Microsoft", provider: microsoftProvider, icon: FaMicrosoft, disabled: true },
   ];
 
   return (
@@ -196,7 +192,6 @@ export default function SignupPage() {
               <sp.icon className="mr-2 h-5 w-5" />
             )}
             Continuar com {sp.name}
-            {sp.disabled && <span className="ml-2 text-xs text-muted-foreground">(Configurar)</span>}
           </Button>
         ))}
       </div>
