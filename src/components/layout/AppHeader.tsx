@@ -32,17 +32,17 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
         </Button>
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image
-            src="/logo-clinica-uroonco.png" 
+            src="/logo-clinica-uroonco.png"
             alt="UroTrack Logo"
-            width={150} 
+            width={150}
             height={45}
-            className="h-auto" 
+            className="h-auto"
             priority
           />
           {/* <h1 className="font-headline text-xl font-bold text-primary hidden sm:block">UroTrack</h1> */}
         </Link>
       </div>
-      
+
       {user && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

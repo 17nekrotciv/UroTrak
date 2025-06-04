@@ -61,7 +61,7 @@ export default function SidebarNavContent({ onLinkClick }: SidebarNavContentProp
       <div className="mt-auto p-4 text-center text-xs text-muted-foreground space-y-2 border-t">
         <div className="mb-2">
            <Image
-            src="/logo-clinica-uroonco.png" 
+            src="/logo-clinica-uroonco.png"
             alt="Clínica Uro Onco Logo"
             width={150}
             height={45}

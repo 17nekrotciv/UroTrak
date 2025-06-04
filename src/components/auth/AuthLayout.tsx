@@ -14,18 +14,18 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-accent/30 p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <Image 
-            src="/logo-clinica-uroonco.png" 
-            alt="UroTrack - Clínica Uro Onco Logo" 
-            width={200} 
-            height={60} 
+          <Image
+            src="/logo-clinica-uroonco.png"
+            alt="UroTrack - Clínica Uro Onco Logo"
+            width={200}
+            height={60}
             className="mx-auto mb-4"
             priority
           />
           <h1 className="font-headline text-4xl font-bold text-primary">{title}</h1>
           <p className="mt-2 text-muted-foreground">Bem-vindo ao UroTrack</p>
         </div>
-        
+
         <div className="rounded-xl border bg-card p-6 shadow-xl sm:p-8">
           {children}
         </div>
@@ -45,7 +45,7 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
               <span>Contato via WhatsApp</span>
             </Link>
           </div>
-          <p className="pt-2"> 
+          <p className="pt-2">
             Todos os direitos reservados são de propriedade da Clínica Uro Onco.
             <br />
             Desenvolvido pela equipe de tecnologia em conjunto com Dr. Bruno Benigno.
