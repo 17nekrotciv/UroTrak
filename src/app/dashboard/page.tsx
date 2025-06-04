@@ -7,7 +7,7 @@ import { LayoutDashboard, Loader2 } from 'lucide-react';
 import { useData } from '@/contexts/data-provider';
 import GenericLineChart from '@/components/charts/GenericLineChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from '@/components/ui/separator';
 
 export default function DashboardPage() {
   const { appData, loadingData } = useData();
@@ -59,83 +59,74 @@ export default function DashboardPage() {
         icon={LayoutDashboard} 
       />
 
-      <Tabs defaultValue="psa" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6">
-          <TabsTrigger value="psa">PSA</TabsTrigger>
-          <TabsTrigger value="erectile">Função Erétil</TabsTrigger>
-          <TabsTrigger value="pads">Absorventes</TabsTrigger>
-          <TabsTrigger value="loss">Perda Urinária</TabsTrigger>
-        </TabsList>
+      <div className="space-y-8">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-center">Evolução do PSA (ng/mL)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GenericLineChart
+              data={psaDataForChart}
+              xAxisKey="date"
+              yAxisKey="Valor PSA"
+              yAxisLabel="PSA (ng/mL)"
+              lineColor="hsl(var(--chart-1))"
+            />
+          </CardContent>
+        </Card>
 
-        <TabsContent value="psa">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl text-center">Evolução do PSA (ng/mL)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <GenericLineChart
-                data={psaDataForChart}
-                xAxisKey="date"
-                yAxisKey="Valor PSA"
-                yAxisLabel="PSA (ng/mL)"
-                lineColor="hsl(var(--chart-1))"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Separator />
 
-        <TabsContent value="erectile">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl text-center">Evolução da Função Erétil</CardTitle>
-            </CardHeader>
-            <CardContent>
-               <GenericLineChart
-                data={erectileDataForChart}
-                xAxisKey="date"
-                yAxisKey="Qualidade da Ereção"
-                yAxisLabel="Escala de Qualidade (0-4)"
-                lineColor="hsl(var(--chart-2))"
-              />
-              <p className="text-xs text-muted-foreground mt-2 text-center">Escala: 0-Nenhuma, 1-Parcial Insuf., 2-Parcial Suf., 3-Total não mantida, 4-Total mantida.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-center">Evolução da Função Erétil</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <GenericLineChart
+              data={erectileDataForChart}
+              xAxisKey="date"
+              yAxisKey="Qualidade da Ereção"
+              yAxisLabel="Escala de Qualidade (0-4)"
+              lineColor="hsl(var(--chart-2))"
+            />
+            <p className="text-xs text-muted-foreground mt-2 text-center">Escala: 0-Nenhuma, 1-Parcial Insuf., 2-Parcial Suf., 3-Total não mantida, 4-Total mantida.</p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="pads">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl text-center">Trocas de Absorventes por Dia</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <GenericLineChart
-                data={padChangesDataForChart}
-                xAxisKey="date"
-                yAxisKey="Trocas de Absorventes"
-                yAxisLabel="Nº de Trocas"
-                lineColor="hsl(var(--chart-3))"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Separator />
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-center">Trocas de Absorventes por Dia</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GenericLineChart
+              data={padChangesDataForChart}
+              xAxisKey="date"
+              yAxisKey="Trocas de Absorventes"
+              yAxisLabel="Nº de Trocas"
+              lineColor="hsl(var(--chart-3))"
+            />
+          </CardContent>
+        </Card>
         
-        <TabsContent value="loss">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl text-center">Perda Urinária (g)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <GenericLineChart
-                data={lossGramsDataForChart}
-                xAxisKey="date"
-                yAxisKey="Perda (g)"
-                yAxisLabel="Grama(s)"
-                lineColor="hsl(var(--chart-4))"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        <Separator />
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-center">Perda Urinária (g)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GenericLineChart
+              data={lossGramsDataForChart}
+              xAxisKey="date"
+              yAxisKey="Perda (g)"
+              yAxisLabel="Grama(s)"
+              lineColor="hsl(var(--chart-4))"
+            />
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }
