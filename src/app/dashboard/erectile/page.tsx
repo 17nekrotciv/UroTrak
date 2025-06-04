@@ -104,15 +104,14 @@ export default function ErectilePage() {
       
       if (successCount > 0) {
         if (errorCount === 0) {
-          toast({ title: "Sucesso!", description: `${successCount} registro(s) de função erétil salvo(s) com sucesso.` });
+          // Toast de sucesso total não é mais necessário aqui, pois haverá redirecionamento
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        router.push('/dashboard/psa');
+        router.push('/dashboard/success');
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       }
-      // No specific toast if data.entries was initially empty, handled at the start.
 
     } catch (e) {
       console.error("Erro inesperado no processo de submissão da função erétil:", e);
@@ -150,7 +149,7 @@ export default function ErectilePage() {
                   render={({ field: controllerField }) => (
                     <Select 
                       onValueChange={controllerField.onChange} 
-                      value={controllerField.value}
+                      value={controllerField.value} // Changed from defaultValue
                     >
                       <SelectTrigger id={`entries.${index}.erectionQuality`} className={errors.entries?.[index]?.erectionQuality ? "border-destructive" : ""}>
                         <SelectValue placeholder="Selecione a qualidade da ereção" />

@@ -97,16 +97,14 @@ export default function PSAPage() {
     
       if (successCount > 0) {
         if (errorCount === 0) {
-          toast({ title: "Sucesso!", description: `${successCount} resultado(s) PSA salvo(s) com sucesso.` });
+          // Toast de sucesso total não é mais necessário aqui, pois haverá redirecionamento
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        router.push('/dashboard');
+        router.push('/dashboard/success');
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       }
-       // No specific toast if data.entries was initially empty, handled at the start.
-
     } catch (e) {
       console.error("Erro inesperado no processo de submissão de PSA:", e);
       toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de PSA.", variant: "destructive" });
