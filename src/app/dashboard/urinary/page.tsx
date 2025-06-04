@@ -54,7 +54,7 @@ const getDefaultUrinaryEntry = (): SingleUrinaryEntryInput => ({
 
 export default function UrinaryPage() {
   const { user } = useAuth();
-  const { addUrinaryLog, loadingData } = useData();
+  const { appData, addUrinaryLog, loadingData } = useData(); // Correctly destructure appData
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -81,7 +81,7 @@ export default function UrinaryPage() {
       toast({ title: "Nenhum registro", description: "Adicione pelo menos um registro para salvar.", variant: "default" });
       return;
     }
-
+    
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
@@ -109,12 +109,10 @@ export default function UrinaryPage() {
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        router.push('/dashboard/erectile');
+        router.push('/dashboard/erectile'); 
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       }
-      // No specific toast if data.entries was initially empty, handled at the start.
-
     } catch (e) {
       console.error("Erro inesperado no processo de submissão urinária:", e);
       toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de sintomas urinários.", variant: "destructive" });
