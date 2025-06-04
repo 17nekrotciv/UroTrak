@@ -32,11 +32,11 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
         </Button>
         <Link href="/dashboard" className="flex items-center gap-2">
           <Image
-            src="https://placehold.co/140x40.png" // Substitua por /logo-uroonco.png quando estiver em public/
+            src="https://placehold.co/140x40.png" 
             alt="UroTrack Logo"
-            width={140} // Ajustado para melhor visualização no header
+            width={140} 
             height={40}
-            className="h-7 sm:h-8 w-auto" // Altura responsiva, largura automática
+            className="h-7 sm:h-8 w-auto" 
             data-ai-hint="clinic logo"
             priority
           />

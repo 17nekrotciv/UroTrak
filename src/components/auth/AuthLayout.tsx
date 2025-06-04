@@ -15,10 +15,10 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Image 
-            src="https://placehold.co/200x60.png" // Substitua por /logo-uroonco.png quando o arquivo estiver em public/
+            src="https://placehold.co/200x60.png" 
             alt="UroTrack - Clínica Uro Onco Logo" 
-            width={200} // Ajuste a largura conforme necessário
-            height={60} // Ajuste a altura conforme necessário
+            width={200} 
+            height={60} 
             className="mx-auto mb-4"
             data-ai-hint="clinic logo"
             priority
