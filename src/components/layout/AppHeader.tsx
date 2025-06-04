@@ -3,7 +3,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-provider';
 import { LogOut, UserCircle, Menu } from 'lucide-react';
@@ -31,15 +30,8 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
           <span className="sr-only">Abrir menu</span>
         </Button>
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Image
-            src="/logo-clinica-uroonco.png"
-            alt="UroTrack Logo"
-            width={150}
-            height={45}
-            className="h-auto"
-            priority
-          />
-          {/* <h1 className="font-headline text-xl font-bold text-primary hidden sm:block">UroTrack</h1> */}
+          {/* App Logo replaced with text */}
+          <span className="font-headline text-xl font-bold text-primary">Uro Track - Clínica Uro Onco</span>
         </Link>
       </div>
 

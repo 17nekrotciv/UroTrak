@@ -3,7 +3,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -60,13 +59,8 @@ export default function SidebarNavContent({ onLinkClick }: SidebarNavContentProp
       </nav>
       <div className="mt-auto p-4 text-center text-xs text-muted-foreground space-y-2 border-t">
         <div className="mb-2">
-           <Image
-            src="/logo-clinica-uroonco.png"
-            alt="Clínica Uro Onco Logo"
-            width={150}
-            height={45}
-            className="mx-auto h-auto"
-          />
+           {/* Clinic Logo replaced with text */}
+          <p className="text-sm font-semibold">Clinica Uro Onco</p>
         </div>
         <p className="font-semibold">Dr. Bruno Benigno</p>
         <p>CRM SP 126265 | RQE 60022</p>
