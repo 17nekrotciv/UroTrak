@@ -59,7 +59,7 @@ export default function UrinaryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<UrinaryFormInputs>({
+  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<UrinaryFormInputs>({
     resolver: zodResolver(urinaryFormSchema),
     defaultValues: {
       entries: [getDefaultUrinaryEntry()],
@@ -85,6 +85,7 @@ export default function UrinaryPage() {
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
+    let shouldNavigate = false;
 
     try {
       for (const entry of data.entries) {
@@ -109,7 +110,7 @@ export default function UrinaryPage() {
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        router.push('/dashboard/success'); 
+        shouldNavigate = true; // Set flag for navigation
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       }
@@ -120,6 +121,10 @@ export default function UrinaryPage() {
       setIsSubmitting(false);
       const newDefaultFormValues = getDefaultUrinaryEntry();
       reset({ entries: [newDefaultFormValues] });
+      
+      if (shouldNavigate) {
+        router.push('/dashboard/success');
+      }
     }
   };
 
