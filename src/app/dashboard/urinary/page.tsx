@@ -2,7 +2,7 @@
 // src/app/dashboard/urinary/page.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller, type SubmitHandler, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -105,7 +105,7 @@ export default function UrinaryPage() {
 
       if (successCount > 0) {
         if (errorCount === 0) {
-          // Toast de sucesso total não é mais necessário aqui, pois haverá redirecionamento
+          // Toast de sucesso total não é mais necessário aqui, pois haverá redirecionamento para página de sucesso
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
@@ -118,7 +118,6 @@ export default function UrinaryPage() {
       toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de sintomas urinários.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
-      // Resetar mesmo se não houve sucesso para limpar o formulário para nova tentativa ou nova entrada
       const newDefaultFormValues = getDefaultUrinaryEntry();
       reset({ entries: [newDefaultFormValues] });
     }
@@ -260,3 +259,4 @@ export default function UrinaryPage() {
     </>
   );
 }
+    

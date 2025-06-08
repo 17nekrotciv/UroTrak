@@ -149,7 +149,7 @@ export default function ErectilePage() {
                   render={({ field: controllerField }) => (
                     <Select 
                       onValueChange={controllerField.onChange} 
-                      value={controllerField.value} // Changed from defaultValue
+                      value={controllerField.value}
                     >
                       <SelectTrigger id={`entries.${index}.erectionQuality`} className={errors.entries?.[index]?.erectionQuality ? "border-destructive" : ""}>
                         <SelectValue placeholder="Selecione a qualidade da ereção" />
@@ -262,3 +262,4 @@ export default function ErectilePage() {
     </>
   );
 }
+    
