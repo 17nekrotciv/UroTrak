@@ -59,7 +59,7 @@ export default function UrinaryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const { control, register, handleSubmit, reset, formState: { errors, isDirty } } = useForm<UrinaryFormInputs>({
+  const { control, register, handleSubmit, reset, formState: { errors } } = useForm<UrinaryFormInputs>({
     resolver: zodResolver(urinaryFormSchema),
     defaultValues: {
       entries: [getDefaultUrinaryEntry()],
@@ -104,24 +104,30 @@ export default function UrinaryPage() {
         }
       }
 
+      // Toasts são exibidos antes de qualquer tentativa de navegação
       if (successCount > 0) {
         if (errorCount === 0) {
-          // Toast de sucesso total não é mais necessário aqui, pois haverá redirecionamento para página de sucesso
+          // A página de sucesso vai lidar com a mensagem principal, mas podemos ter um toast aqui se quisermos
+          // toast({ title: "Sucesso!", description: `${successCount} registro(s) salvo(s).` });
         } else {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        shouldNavigate = true; // Set flag for navigation
+        shouldNavigate = true; // Define que a navegação deve ocorrer
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       }
+
     } catch (e) {
       console.error("Erro inesperado no processo de submissão urinária:", e);
       toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de sintomas urinários.", variant: "destructive" });
     } finally {
+      // Este bloco SEMPRE será executado.
+      // Primeiro, atualiza o estado da UI local.
       setIsSubmitting(false);
       const newDefaultFormValues = getDefaultUrinaryEntry();
       reset({ entries: [newDefaultFormValues] });
       
+      // Então, se a navegação for necessária, executa-a.
       if (shouldNavigate) {
         router.push('/dashboard/success');
       }
