@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,77 +7,77 @@
 
 @layer base {
   :root {
-    --background: 220 30% 97%; /* Very light grayish blue, slightly off-white */
-    --foreground: 215 25% 30%; /* Darker, more saturated grayish blue for main text */
+    --background: 48 100% 97%; /* Very pale yellow, almost cream */
+    --foreground: 218 50% 25%; /* Navy */
     
     --card: 0 0% 100%;         /* White cards */
-    --card-foreground: 215 25% 30%;
+    --card-foreground: 218 50% 25%; /* Navy */
     
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 30%;
+    --popover-foreground: 218 50% 25%; /* Navy */
     
-    --primary: 210 70% 55%;   /* Calm, medium blue for buttons, active icons */
+    --primary: 37 88% 58%;   /* Light orange */
     --primary-foreground: 0 0% 100%; /* White text on primary */
     
-    --secondary: 210 70% 90%;  /* Lighter blue for active item backgrounds (like sidebar item) */
-    --secondary-foreground: 210 70% 45%; /* Darker blue for text on secondary elements */
+    --secondary: 199 41% 45%;  /* Teal blue */
+    --secondary-foreground: 0 0% 100%; /* White text on secondary */
     
-    --muted: 220 25% 92%;     /* Lighter grey-blue for muted backgrounds */
-    --muted-foreground: 215 20% 55%; /* Softer text for descriptions */
+    --muted: 48 100% 92%;     /* Lighter pale yellow */
+    --muted-foreground: 218 30% 50%; /* Muted navy/grey */
     
-    --accent: 210 70% 65%;     /* A slightly lighter/softer version of primary for hover states */
-    --accent-foreground: 0 0% 100%; 
+    --accent: 48 95% 60%;     /* Bright yellow */
+    --accent-foreground: 218 50% 20%; /* Darker navy for contrast on yellow */
     
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 210 30% 88%;     /* Light blue-gray border */
+    --border: 218 30% 85%;     /* Light navy-gray border */
     --input: 0 0% 100%;         /* White input background */
-    --ring: 210 70% 55%;       /* Primary color for focus rings */
+    --ring: 37 88% 58%;       /* Primary color for focus rings */
 
-    --chart-1: 210 70% 55%; 
-    --chart-2: 190 70% 55%; 
-    --chart-3: 220 60% 65%; 
-    --chart-4: 30 80% 65%;
-    --chart-5: 27 87% 67%; /* Kept original chart colors, can be adjusted if needed */
+    --chart-1: 48 95% 60%;  /* Yellow */
+    --chart-2: 37 88% 58%;  /* Light Orange */
+    --chart-3: 28 70% 50%;  /* Deep Orange */
+    --chart-4: 199 41% 45%; /* Teal Blue */
+    --chart-5: 218 79% 19%; /* Navy Blue (from image) */
     --radius: 0.5rem;
-
-    /* Removed specific --sidebar-background, --sidebar-foreground etc. */
-    /* Sidebar styling will rely on the main theme variables and component-specific styles. */
-    /* For example, active sidebar items use variants of --primary and --secondary. */
   }
 
   .dark {
-    /* Keeping dark theme variables as they were, can be adjusted later if needed */
-    --background: 210 15% 12%; 
-    --foreground: 210 30% 90%; 
+    --background: 218 30% 12%; /* Very dark, slightly desaturated navy */
+    --foreground: 48 80% 85%;  /* Pale, soft yellow for text */
 
-    --card: 210 15% 15%;
-    --card-foreground: 210 30% 90%;
+    --card: 218 30% 18%; /* Darker than background but not black */
+    --card-foreground: 48 80% 85%; /* Pale yellow text */
 
-    --popover: 210 15% 15%;
-    --popover-foreground: 210 30% 90%;
+    --popover: 218 30% 18%;
+    --popover-foreground: 48 80% 85%;
 
-    --primary: 210 70% 55%; /* Updated primary for dark mode consistency */
-    --primary-foreground: 0 0% 100%; /* Ensure contrast */
+    --primary: 37 88% 58%; /* Light orange - keeps its vibrancy */
+    --primary-foreground: 218 50% 15%; /* Very dark navy for contrast */
 
-    --secondary: 210 20% 25%; 
-    --secondary-foreground: 210 30% 85%;
+    --secondary: 199 41% 50%; /* Teal blue, slightly brightened */
+    --secondary-foreground: 0 0% 100%; /* White */
 
-    --muted: 210 20% 22%;
-    --muted-foreground: 210 25% 65%; 
+    --muted: 218 25% 25%; /* Muted dark navy */
+    --muted-foreground: 218 25% 65%; /* Lighter muted navy text */
 
-    --accent: 210 70% 45%; /* Darker accent for dark mode */
-    --accent-foreground: 0 0% 100%;
+    --accent: 48 95% 60%; /* Bright yellow - keeps its vibrancy */
+    --accent-foreground: 218 50% 15%; /* Very dark navy for contrast */
 
-    --destructive: 0 70% 50%;
+    --destructive: 0 70% 55%; /* Slightly desaturated red */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 20% 30%;
-    --input: 210 20% 28%;
-    --ring: 210 70% 55%;
+    --border: 218 25% 30%; /* Dark navy-gray border */
+    --input: 218 25% 22%; /* Input background slightly different from card */
+    --ring: 37 88% 58%; /* Primary color for focus rings */
 
-    /* Sidebar in dark mode will use these general dark theme variables */
+    /* Chart colors can often remain the same or be adjusted if needed */
+    /* --chart-1: 48 95% 60%; defined in :root */
+    /* --chart-2: 37 88% 58%; defined in :root */
+    /* --chart-3: 28 70% 50%; defined in :root */
+    /* --chart-4: 199 41% 45%; defined in :root */
+    /* --chart-5: 218 79% 19%; defined in :root */
   }
 }
 
