@@ -13,7 +13,7 @@ export default function PageHeader({ title, description, icon: Icon, children }:
   return (
     <div className="mb-6 pb-4 border-b">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 pl-6"> {/* Alterado aqui: adicionado pl-6 */}
           {Icon && <Icon className="h-8 w-8 text-primary" />}
           <div>
             <h2 className="font-headline text-2xl sm:text-3xl font-bold text-foreground">{title}</h2>
