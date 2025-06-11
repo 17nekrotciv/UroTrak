@@ -1,6 +1,7 @@
 // src/components/auth/AuthLayout.tsx
 import React, { type ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image'; // Import next/image
 import { FaWhatsapp } from 'react-icons/fa';
 
 interface AuthLayoutProps {
@@ -13,7 +14,16 @@ export default function AuthLayout({ children, title }: AuthLayoutProps) {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-accent/30 p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="font-headline text-3xl font-bold text-primary mb-2">Uro Track - Clínica Uro Onco</h1>
+          <Link href="/" aria-label="Página Inicial UroTrack">
+            <Image 
+              src="https://static.wixstatic.com/media/5c67c0_f5b3f54cdd584c12b1e2207e44cfd15b~mv2.png" 
+              alt="Uro Track - Clínica Uro Onco Logo" 
+              width={180} // Adjusted for auth page
+              height={91}  // Adjusted for auth page
+              className="mx-auto mb-4 object-contain"
+              priority
+            />
+          </Link>
           <h2 className="font-headline text-4xl font-bold text-primary">{title}</h2>
           <p className="mt-2 text-muted-foreground">Bem-vindo ao UroTrack</p>
         </div>
