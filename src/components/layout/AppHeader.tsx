@@ -30,15 +30,16 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
           <Menu className="h-6 w-6" />
           <span className="sr-only">Abrir menu</span>
         </Button>
-        <Link href="/dashboard" className="flex items-center">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <Image 
             src="https://static.wixstatic.com/media/5c67c0_f5b3f54cdd584c12b1e2207e44cfd15b~mv2.png" 
             alt="Uro Track - Clínica Uro Onco Logo" 
-            width={72} // Adjusted for header height
-            height={36} // Adjusted for header height
+            width={72} 
+            height={36} 
             className="object-contain"
-            priority // Preload logo as it's LCP candidate
+            priority 
           />
+          <span className="font-headline text-xl font-bold text-primary hidden sm:inline">Uro Track</span>
         </Link>
       </div>
 
