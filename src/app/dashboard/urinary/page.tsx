@@ -1,8 +1,7 @@
-
 // src/app/dashboard/urinary/page.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm, Controller, type SubmitHandler, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -104,15 +103,11 @@ export default function UrinaryPage() {
         }
       }
 
-      // Toasts são exibidos antes de qualquer tentativa de navegação
       if (successCount > 0) {
-        if (errorCount === 0) {
-          // A página de sucesso vai lidar com a mensagem principal, mas podemos ter um toast aqui se quisermos
-          // toast({ title: "Sucesso!", description: `${successCount} registro(s) salvo(s).` });
-        } else {
+        if (errorCount > 0) {
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        shouldNavigate = true; // Define que a navegação deve ocorrer
+        shouldNavigate = true;
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       }
@@ -121,15 +116,12 @@ export default function UrinaryPage() {
       console.error("Erro inesperado no processo de submissão urinária:", e);
       toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de sintomas urinários.", variant: "destructive" });
     } finally {
-      // Este bloco SEMPRE será executado.
-      // Primeiro, atualiza o estado da UI local.
       setIsSubmitting(false);
       const newDefaultFormValues = getDefaultUrinaryEntry();
       reset({ entries: [newDefaultFormValues] });
       
-      // Então, se a navegação for necessária, executa-a.
       if (shouldNavigate) {
-        router.push('/dashboard/success');
+        setTimeout(() => router.push('/dashboard/success'), 100);
       }
     }
   };
@@ -270,4 +262,3 @@ export default function UrinaryPage() {
     </>
   );
 }
-    

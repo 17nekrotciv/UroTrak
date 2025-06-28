@@ -1,4 +1,3 @@
-
 // src/app/dashboard/psa/page.tsx
 "use client";
 
@@ -78,6 +77,7 @@ export default function PSAPage() {
     setIsSubmitting(true);
     let successCount = 0;
     let errorCount = 0;
+    let shouldNavigate = false;
 
     try {
       for (const entry of data.entries) {
@@ -96,12 +96,10 @@ export default function PSAPage() {
       }
     
       if (successCount > 0) {
-        if (errorCount === 0) {
-         // Toast de sucesso total não é mais necessário aqui, pois haverá redirecionamento
-        } else {
+        if (errorCount > 0) {
           toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
-        router.push('/dashboard/success');
+        shouldNavigate = true;
       } else if (errorCount > 0) {
         toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
       }
@@ -112,6 +110,10 @@ export default function PSAPage() {
       setIsSubmitting(false);
       const newDefaultFormValues = getDefaultPSAEntry();
       reset({ entries: [newDefaultFormValues] });
+      
+      if (shouldNavigate) {
+        setTimeout(() => router.push('/dashboard/success'), 100);
+      }
     }
   };
 
@@ -216,4 +218,3 @@ export default function PSAPage() {
     </>
   );
 }
-    
