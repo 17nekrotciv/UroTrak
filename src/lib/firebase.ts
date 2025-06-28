@@ -44,7 +44,6 @@ const auth = getAuth(app);
 const db = initializeFirestore(app, {
   cache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
 });
-console.log("Persistência offline do Firestore configurada usando FirestoreSettings.cache.");
 
 // A chamada antiga para enableIndexedDbPersistence() foi removida.
 // O Firestore agora lida com a inicialização do cache internamente com base nas configurações fornecidas.
