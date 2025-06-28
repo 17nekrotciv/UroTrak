@@ -7,9 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, type AuthProvider as FirebaseAuthProvider, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db, googleProvider } from '@/lib/firebase';
-import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, type AuthProvider as FirebaseAuthProvider } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,19 +34,6 @@ export default function SignupPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<SignupFormInputs>({
     resolver: zodResolver(signupSchema),
   });
-
-  const handleFirestoreUser = async (firebaseUser: FirebaseUser, customDisplayName?: string) => {
-    const userDocRef = doc(db, "users", firebaseUser.uid);
-    const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) {
-      await setDoc(userDocRef, {
-        displayName: customDisplayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário Anônimo',
-        email: firebaseUser.email,
-        createdAt: Timestamp.fromDate(new Date()),
-        providerId: firebaseUser.providerData[0]?.providerId || 'email',
-      });
-    }
-  };
   
   const onSignupSuccess = () => {
     toast({ title: "Cadastro realizado com sucesso!", description: "Você será redirecionado para o painel." });
@@ -101,8 +87,8 @@ export default function SignupPage() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
+      // Update the user's profile in Firebase Auth. onAuthStateChanged will handle the Firestore part.
       await updateProfile(user, { displayName: data.displayName });
-      await handleFirestoreUser(user, data.displayName);
       onSignupSuccess();
     } catch (error: any) {
       onSignupError(error);
@@ -114,8 +100,8 @@ export default function SignupPage() {
   const handleSocialSignup = async (provider: FirebaseAuthProvider, providerName: string) => {
     setSocialLoading(providerName);
     try {
-      const result = await signInWithPopup(auth, provider);
-      await handleFirestoreUser(result.user); 
+      await signInWithPopup(auth, provider);
+      // The logic to handle user data in Firestore is now centralized in AuthProvider.
       onSignupSuccess();
     } catch (error: any) {
       onSignupError(error, providerName);

@@ -7,9 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, signInWithPopup, type AuthProvider as FirebaseAuthProvider, type User as FirebaseUser } from 'firebase/auth';
-import { auth, db, googleProvider } from '@/lib/firebase';
-import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signInWithPopup, type AuthProvider as FirebaseAuthProvider } from 'firebase/auth';
+import { auth, googleProvider } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,19 +33,6 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
     resolver: zodResolver(loginSchema),
   });
-
-  const handleFirestoreUser = async (firebaseUser: FirebaseUser) => {
-    const userDocRef = doc(db, "users", firebaseUser.uid);
-    const userDocSnap = await getDoc(userDocRef);
-    if (!userDocSnap.exists()) {
-      await setDoc(userDocRef, {
-        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário Anônimo',
-        email: firebaseUser.email,
-        createdAt: Timestamp.fromDate(new Date()),
-        providerId: firebaseUser.providerData[0]?.providerId || 'unknown',
-      });
-    }
-  };
 
   const onLoginSuccess = () => {
     toast({ title: "Login bem-sucedido!", description: "Redirecionando para o painel..." });
@@ -83,8 +69,8 @@ export default function LoginPage() {
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      await handleFirestoreUser(userCredential.user);
+      await signInWithEmailAndPassword(auth, data.email, data.password);
+      // The logic to handle user data in Firestore is now centralized in AuthProvider.
       onLoginSuccess();
     } catch (error: any) {
       onLoginError(error);
@@ -96,8 +82,8 @@ export default function LoginPage() {
   const handleSocialLogin = async (provider: FirebaseAuthProvider, providerName: string) => {
     setSocialLoading(providerName);
     try {
-      const result = await signInWithPopup(auth, provider);
-      await handleFirestoreUser(result.user);
+      await signInWithPopup(auth, provider);
+      // The logic to handle user data in Firestore is now centralized in AuthProvider.
       onLoginSuccess();
     } catch (error: any) {
       onLoginError(error, providerName);

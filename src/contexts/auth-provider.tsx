@@ -4,7 +4,8 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase'; // import db
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore'; // import firestore functions
 import type { UserProfile } from '@/types';
 import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -17,6 +18,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// This function will handle creating the user profile in Firestore if it doesn't exist.
+// We are centralizing the logic here.
+const manageUserInFirestore = async (firebaseUser: FirebaseUser) => {
+  const userDocRef = doc(db, "users", firebaseUser.uid);
+  try {
+    const userDocSnap = await getDoc(userDocRef);
+    if (!userDocSnap.exists()) {
+      // If the user document doesn't exist in our database, create it.
+      await setDoc(userDocRef, {
+        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário Anônimo',
+        email: firebaseUser.email,
+        createdAt: Timestamp.fromDate(new Date()),
+        providerId: firebaseUser.providerData[0]?.providerId || 'email',
+      });
+    }
+  } catch (error) {
+    console.error("Error managing user in Firestore:", error);
+    // Optionally, we could log out the user or show a global error
+  }
+};
+
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,8 +47,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
+        // When a user logs in, ensure their profile exists in our "urotrak database" (Firestore)
+        await manageUserInFirestore(firebaseUser);
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
