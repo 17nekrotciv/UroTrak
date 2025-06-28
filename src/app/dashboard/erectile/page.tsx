@@ -104,6 +104,7 @@ export default function ErectilePage() {
       
       if (successCount > 0) {
         if (errorCount > 0) {
+          setIsSubmitting(false);
           toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
         }
         shouldNavigate = true;

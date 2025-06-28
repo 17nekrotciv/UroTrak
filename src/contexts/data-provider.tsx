@@ -29,57 +29,58 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   });
   const [loadingData, setLoadingData] = useState(true);
 
-  const fetchData = useCallback(async (collectionName: string, userId: string) => {
-    const q = query(collection(db, 'users', userId, collectionName), orderBy('date', 'desc'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const items: any[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        items.push({ 
-          id: doc.id, 
-          ...data,
-          date: (data.date as Timestamp).toDate().toISOString()
-        });
-      });
-      setAppData(prevData => ({
-        ...prevData,
-        [collectionName === 'urinary_logs' ? 'urinaryLogs' : 
-         collectionName === 'erectile_logs' ? 'erectileLogs' : 
-         'psaLogs']: items
-      }));
-      setLoadingData(false);
-    }, (error: FirestoreError) => {
-      console.error(`Error fetching ${collectionName}: `, error);
-      let description = `Não foi possível carregar os dados de ${collectionName}.`;
-      if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('client is offline'))) {
-        description = `Não foi possível carregar ${collectionName}. Verifique sua conexão com a internet. Se o problema persistir, pode haver um problema com as permissões de acesso aos dados (Firestore Rules).`;
-      } else if (error.code === 'permission-denied') {
-        description = `Acesso negado ao carregar ${collectionName}. Verifique as regras de segurança do Firestore.`;
-      }
-      toast({ title: "Erro ao buscar dados", description, variant: "destructive" });
-      setLoadingData(false);
-    });
-    return unsubscribe;
-  }, [toast]);
-
-
   useEffect(() => {
-    if (user) {
-      setLoadingData(true);
-      const unsubUrinary = fetchData('urinary_logs', user.uid);
-      const unsubErectile = fetchData('erectile_logs', user.uid);
-      const unsubPSA = fetchData('psa_logs', user.uid);
-      
-      return () => {
-        unsubUrinary.then(unsub => unsub());
-        unsubErectile.then(unsub => unsub());
-        unsubPSA.then(unsub => unsub());
-      };
-    } else {
+    if (!user) {
       setAppData({ urinaryLogs: [], erectileLogs: [], psaLogs: [] });
       setLoadingData(false);
+      return; // No user, so no listeners to set up.
     }
-  }, [user, fetchData]);
+
+    setLoadingData(true);
+
+    const setupListener = (collectionName: string, stateKey: keyof AppData) => {
+      const q = query(collection(db, 'users', user.uid, collectionName), orderBy('date', 'desc'));
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const items: any[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          items.push({ 
+            id: doc.id, 
+            ...data,
+            // Ensure date is always converted to ISO string for consistency
+            date: (data.date as Timestamp).toDate().toISOString()
+          });
+        });
+        setAppData(prevData => ({ ...prevData, [stateKey]: items }));
+        setLoadingData(false); // Data for this collection has loaded
+      }, (error: FirestoreError) => {
+        console.error(`Error fetching ${collectionName}: `, error);
+        let description = `Não foi possível carregar os dados de ${collectionName}.`;
+        if (error.code === 'permission-denied') {
+          description = `Acesso negado ao carregar ${collectionName}. Verifique as regras de segurança do Firestore.`;
+        } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('client is offline'))) {
+           description = `Não foi possível carregar ${collectionName}. Verifique sua conexão com a internet ou as permissões do Firestore.`;
+        }
+        toast({ title: "Erro ao buscar dados", description, variant: "destructive" });
+        setLoadingData(false);
+      });
+
+      return unsubscribe; // Return the cleanup function
+    };
+
+    // Set up listeners for all data types
+    const unsubUrinary = setupListener('urinary_logs', 'urinaryLogs');
+    const unsubErectile = setupListener('erectile_logs', 'erectileLogs');
+    const unsubPSA = setupListener('psa_logs', 'psaLogs');
+
+    // Return a cleanup function that will be called on unmount
+    return () => {
+      unsubUrinary();
+      unsubErectile();
+      unsubPSA();
+    };
+  }, [user, toast]);
 
   const addLog = async <T extends { date: Date }>(collectionName: string, log: Omit<T, 'id'> ) => {
     if (!user) {
@@ -113,4 +114,3 @@ export const useData = () => {
   }
   return context;
 };
-
