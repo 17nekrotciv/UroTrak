@@ -1,19 +1,12 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regra geral para a coleção 'users'
+    // Regra 1: Permite que um usuário leia e escreva seu próprio perfil
     match /users/{userId} {
-      // PERMISSÕES PARA O PRÓPRIO DOCUMENTO DO USUÁRIO (displayName, email, etc.)
-      // Permite que um usuário crie seu próprio perfil (ex: no cadastro).
-      allow create: if request.auth != null;
-      // Permite que um usuário leia e atualize seu próprio perfil.
-      allow read, update: if request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
 
-      // PERMISSÕES PARA AS SUBCOLEÇÕES (Logs)
-      // Permite que um usuário crie, leia, atualize e apague logs DENTRO do seu próprio perfil.
-      // Isso se aplica a urinary_logs, erectile_logs, e psa_logs.
-      match /{collection}/{logId} {
+      // Regra 2: Permite que um usuário leia e escreva em suas próprias subcoleções de logs
+      match /{logCollection}/{logId} {
         allow read, write: if request.auth.uid == userId;
       }
     }

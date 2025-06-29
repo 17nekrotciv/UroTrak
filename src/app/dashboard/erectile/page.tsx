@@ -83,46 +83,54 @@ export default function ErectilePage() {
     }
 
     setIsSubmitting(true);
-    let successCount = 0;
-    let errorCount = 0;
-    let shouldNavigate = false;
-
-    try {
-      for (const entry of data.entries) {
-        try {
-          const logData: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date } = {
+    
+    const submissionPromises = data.entries.map(entry => {
+        const logData: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date } = {
             ...entry,
             date: new Date(entry.date),
-          };
-          await addErectileLog(logData);
-          successCount++;
-        } catch (error: any) {
-          console.error("Erro ao submeter registro de função erétil individual:", error.message || error, error);
-          errorCount++;
-        }
-      }
-      
-      if (successCount > 0) {
-        if (errorCount > 0) {
-          setIsSubmitting(false);
-          toast({ title: "Parcialmente salvo", description: `${successCount} registro(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
-        }
-        shouldNavigate = true;
-      } else if (errorCount > 0) {
-        toast({ title: "Erro ao Salvar", description: `Nenhum registro foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} registro(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-      }
+        };
+        return addErectileLog(logData).then(() => ({ status: 'fulfilled' as const })).catch(error => ({ status: 'rejected' as const, reason: error }));
+    });
 
-    } catch (e) {
-      console.error("Erro inesperado no processo de submissão da função erétil:", e);
-      toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de função erétil.", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-      const newDefaultFormValues = getDefaultErectileEntry();
-      reset({ entries: [newDefaultFormValues] });
-      
-      if (shouldNavigate) {
-        setTimeout(() => router.push('/dashboard/success'), 100);
-      }
+    const results = await Promise.all(submissionPromises);
+    
+    setIsSubmitting(false);
+
+    const successfulSubmissions = results.filter(r => r.status === 'fulfilled').length;
+    const failedSubmissions = results.filter(r => r.status === 'rejected');
+
+    if (failedSubmissions.length > 0) {
+        const firstError = failedSubmissions[0].reason;
+        console.error("Falha ao salvar registros de função erétil:", failedSubmissions.map(f => f.reason));
+
+        let description = "Ocorreu um erro desconhecido ao salvar.";
+        if (firstError.code === 'permission-denied') {
+            description = "Permissão negada. Verifique se as Regras de Segurança do Firestore foram aplicadas corretamente no Console do Firebase. Esta é a causa mais provável do problema.";
+        } else {
+            description = `Detalhe do erro: ${firstError.message}`;
+        }
+        
+        let title = "Erro ao Salvar";
+        let finalDescription = `Falha ao salvar ${failedSubmissions.length} registro(s). ${description}`;
+
+        if (successfulSubmissions > 0) {
+            title = "Parcialmente Salvo";
+            finalDescription = `${successfulSubmissions} registro(s) salvo(s). ${finalDescription}`;
+        }
+
+        toast({
+            title: title,
+            description: finalDescription,
+            variant: "destructive",
+            duration: 10000,
+        });
+    }
+
+    if (successfulSubmissions > 0) {
+        reset({ entries: [getDefaultErectileEntry()] });
+        if (failedSubmissions.length === 0) {
+            setTimeout(() => router.push('/dashboard/success'), 100);
+        }
     }
   };
   

@@ -75,45 +75,55 @@ export default function PSAPage() {
     }
 
     setIsSubmitting(true);
-    let successCount = 0;
-    let errorCount = 0;
-    let shouldNavigate = false;
-
-    try {
-      for (const entry of data.entries) {
-        try {
-          const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
+    
+    const submissionPromises = data.entries.map(entry => {
+        const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
             ...entry,
             date: new Date(entry.date),
             psaValue: entry.psaValue ?? null,
-          };
-          await addPSALog(logData);
-          successCount++;
-        } catch (error: any) {
-          console.error("Erro ao submeter resultado PSA individual:", error.message || error, error);
-          errorCount++;
-        }
-      }
+        };
+        return addPSALog(logData).then(() => ({ status: 'fulfilled' as const })).catch(error => ({ status: 'rejected' as const, reason: error }));
+    });
+
+    const results = await Promise.all(submissionPromises);
     
-      if (successCount > 0) {
-        if (errorCount > 0) {
-          toast({ title: "Parcialmente salvo", description: `${successCount} resultado(s) salvo(s). ${errorCount} falhou(ram).`, variant: "default" });
+    setIsSubmitting(false);
+
+    const successfulSubmissions = results.filter(r => r.status === 'fulfilled').length;
+    const failedSubmissions = results.filter(r => r.status === 'rejected');
+
+    if (failedSubmissions.length > 0) {
+        const firstError = failedSubmissions[0].reason;
+        console.error("Falha ao salvar resultados de PSA:", failedSubmissions.map(f => f.reason));
+
+        let description = "Ocorreu um erro desconhecido ao salvar.";
+        if (firstError.code === 'permission-denied') {
+            description = "Permissão negada. Verifique se as Regras de Segurança do Firestore foram aplicadas corretamente no Console do Firebase. Esta é a causa mais provável do problema.";
+        } else {
+            description = `Detalhe do erro: ${firstError.message}`;
         }
-        shouldNavigate = true;
-      } else if (errorCount > 0) {
-        toast({ title: "Erro ao Salvar", description: `Nenhum resultado foi salvo. ${errorCount > 1 ? 'Todos os' : 'O'} ${errorCount} resultado(s) falhou(ram). Verifique os dados e tente novamente.`, variant: "destructive" });
-      }
-    } catch (e) {
-      console.error("Erro inesperado no processo de submissão de PSA:", e);
-      toast({ title: "Erro Inesperado", description: "Ocorreu um erro ao processar sua solicitação de PSA.", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-      const newDefaultFormValues = getDefaultPSAEntry();
-      reset({ entries: [newDefaultFormValues] });
-      
-      if (shouldNavigate) {
-        setTimeout(() => router.push('/dashboard/success'), 100);
-      }
+        
+        let title = "Erro ao Salvar";
+        let finalDescription = `Falha ao salvar ${failedSubmissions.length} resultado(s). ${description}`;
+
+        if (successfulSubmissions > 0) {
+            title = "Parcialmente Salvo";
+            finalDescription = `${successfulSubmissions} resultado(s) salvo(s). ${finalDescription}`;
+        }
+
+        toast({
+            title: title,
+            description: finalDescription,
+            variant: "destructive",
+            duration: 10000,
+        });
+    }
+
+    if (successfulSubmissions > 0) {
+        reset({ entries: [getDefaultPSAEntry()] });
+        if (failedSubmissions.length === 0) {
+            setTimeout(() => router.push('/dashboard/success'), 100);
+        }
     }
   };
 
