@@ -6,7 +6,7 @@ import {
   FacebookAuthProvider,
   OAuthProvider
 } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, doc, getDoc } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -61,3 +61,25 @@ export {
   appleProvider,
   microsoftProvider
 };
+
+
+export async function testFirebaseConnection(): Promise<{ success: boolean; message: string; error?: any }> {
+  try {
+    // This is a special document that should be publicly readable according to the firestore.rules.
+    // It's a "health check" for the connection and rules setup.
+    const testDocRef = doc(db, 'health_checks', 'status');
+    await getDoc(testDocRef);
+    return { success: true, message: 'Conexão com o Firebase e Firestore bem-sucedida!' };
+  } catch (error: any) {
+    console.error("Firebase connection test failed:", error);
+    let message = 'Falha no teste de conexão com o Firebase. ';
+    if (error.code === 'permission-denied') {
+      message += 'Causa provável: Permissão negada. As Regras de Segurança do Firestore não foram atualizadas corretamente no Console do Firebase. Copie o conteúdo de `firestore.rules` e cole no seu projeto.';
+    } else if (error.code === 'unavailable' || (error.message && error.message.includes('offline'))) {
+       message += 'Causa provável: O cliente está offline. Isso geralmente significa que as credenciais no seu arquivo `.env.local` (API Key, Project ID, etc.) estão incorretas ou ausentes. Verifique o arquivo e reinicie o servidor.';
+    } else {
+      message += `Erro inesperado: ${error.message} (código: ${error.code || 'N/A'})`;
+    }
+    return { success: false, message, error };
+  }
+}

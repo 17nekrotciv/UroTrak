@@ -4,7 +4,7 @@ Este é o projeto para o UroTrack, um aplicativo desenvolvido com Next.js, Fireb
 
 ## Configuração do Firebase (Passos Críticos)
 
-Para que o aplicativo funcione, é **essencial** que a conexão com o Firebase esteja configurada corretamente. O erro `400 Bad Request` que você está vendo indica um problema em um dos passos abaixo. Por favor, revise cada um deles com atenção:
+Para que o aplicativo funcione, é **essencial** que a conexão com o Firebase esteja configurada corretamente. Erros comuns como `400 Bad Request` ou `client is offline` indicam um problema em um dos passos abaixo. Por favor, revise cada um deles com atenção.
 
 ### Passo 1: Habilitar o Firestore e a Autenticação
 
@@ -48,16 +48,37 @@ Para que o aplicativo funcione, é **essencial** que a conexão com o Firebase e
     ```
 4.  **Reinicie o Servidor:** Após salvar o `.env.local`, **pare (Ctrl+C) e reinicie (`npm run dev`)** o seu servidor de desenvolvimento.
 
-### Passo 3: Atualizar as Regras de Segurança
+### Passo 3: Atualizar as Regras de Segurança (MUITO IMPORTANTE)
 
-Esta é a causa mais comum de erros de permissão.
+Esta é a causa mais comum de erros de permissão e conexão.
 
 1.  Acesse o [Console do Firebase](https://console.firebase.google.com/) e navegue até seu projeto.
 2.  No menu de construção à esquerda, vá para **Firestore Database**.
 3.  Clique na aba **Regras** no topo.
-4.  Copie **todo o conteúdo** do arquivo `firestore.rules` que está no seu projeto.
-5.  Cole o conteúdo no editor de regras do Firebase, **substituindo completamente** as regras existentes.
-6.  Clique em **Publicar**. As alterações podem levar alguns segundos para serem aplicadas.
+4.  Copie **todo o conteúdo** abaixo e cole no editor de regras do Firebase, **substituindo completamente** as regras existentes.
+
+    ```
+    rules_version = '2';
+
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        
+        // This rule allows ANYONE to read this specific document.
+        // It's used as a "health check" to test the connection from the client.
+        match /health_checks/status {
+          allow read: if true;
+        }
+
+        // This rule secures all user documents.
+        // It ensures a user can only read or write to their own data.
+        match /users/{userId}/{document=**} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+    }
+    ```
+
+5.  Clique em **Publicar**. As alterações podem levar alguns segundos para serem aplicadas.
 
 ## Desenvolvimento Local
 
@@ -97,7 +118,7 @@ Agora você está pronto para iniciar o servidor de desenvolvimento do Next.js:
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000) (ou a porta que o Next.js indicar) no seu navegador para ver o aplicativo em execução.
+Abra [http://localhost:3000](http://localhost:3000) (ou a porta que o Next.js indicar) no seu navegador para ver o aplicativo em execução. Na página de login, você encontrará um botão para testar a conexão com o Firebase, que pode ajudar a diagnosticar problemas de configuração.
 
 ## Vinculando a um Repositório GitHub (Primeira Vez)
 

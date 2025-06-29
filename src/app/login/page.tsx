@@ -8,13 +8,13 @@ import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, signInWithPopup, type AuthProvider as FirebaseAuthProvider } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
+import { auth, googleProvider, testFirebaseConnection } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import AuthLayout from '@/components/auth/AuthLayout';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, HelpCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { FcGoogle } from 'react-icons/fc';
 
@@ -28,6 +28,7 @@ type LoginFormInputs = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
@@ -91,6 +92,18 @@ export default function LoginPage() {
       setSocialLoading(null);
     }
   };
+  
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    const result = await testFirebaseConnection();
+    toast({
+        title: result.success ? "Teste de Conexão" : "Falha no Teste de Conexão",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+        duration: 9000,
+    });
+    setIsTestingConnection(false);
+  };
 
   const socialProviders = [
     { name: "Google", provider: googleProvider, icon: FcGoogle, disabled: false },
@@ -107,7 +120,7 @@ export default function LoginPage() {
             placeholder="seuemail@exemplo.com"
             {...register("email")}
             className={errors.email ? "border-destructive" : ""}
-            disabled={loading || !!socialLoading}
+            disabled={loading || !!socialLoading || isTestingConnection}
           />
           {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
@@ -119,15 +132,26 @@ export default function LoginPage() {
             placeholder="Sua senha"
             {...register("password")}
             className={errors.password ? "border-destructive" : ""}
-            disabled={loading || !!socialLoading}
+            disabled={loading || !!socialLoading || isTestingConnection}
           />
           {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
         </div>
-        <Button type="submit" className="w-full font-semibold" disabled={loading || !!socialLoading}>
+        <Button type="submit" className="w-full font-semibold" disabled={loading || !!socialLoading || isTestingConnection}>
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
           Entrar
         </Button>
       </form>
+
+      <Button 
+        type="button"
+        variant="outline"
+        className="w-full font-semibold mt-4 border-dashed"
+        onClick={handleTestConnection}
+        disabled={loading || !!socialLoading || isTestingConnection}
+      >
+        {isTestingConnection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HelpCircle className="mr-2 h-4 w-4" />}
+        Testar Conexão com Firebase
+      </Button>
 
       <Separator className="my-6" />
       
@@ -139,7 +163,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={() => handleSocialLogin(sp.provider, sp.name)}
-            disabled={sp.disabled || loading || !!socialLoading}
+            disabled={sp.disabled || loading || !!socialLoading || isTestingConnection}
             aria-label={`Entrar com ${sp.name}`}
           >
             {socialLoading === sp.name ? (
