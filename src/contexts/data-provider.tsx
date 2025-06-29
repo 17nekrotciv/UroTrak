@@ -1,4 +1,3 @@
-
 // src/contexts/data-provider.tsx
 "use client";
 
@@ -33,14 +32,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     console.error(`Error fetching ${collectionName}: `, error.code, error.message);
     let description = `Não foi possível carregar os dados de ${collectionName}.`;
 
-    if (error.code === 'permission-denied' || error.message.includes('403')) {
+    if (error.code === 'permission-denied') {
       description = `Acesso negado para buscar dados de ${collectionName}. Isso geralmente é causado por Regras de Segurança do Firestore que não permitem a leitura. Verifique suas regras no Console do Firebase.`;
-    } else if (error.code === 'unauthenticated' || error.message.includes('401')) {
+    } else if (error.code === 'unauthenticated') {
         description = `Usuário não autenticado para buscar dados de ${collectionName}.`;
-    } else if (error.code === 'invalid-argument' || error.message.includes('400')) {
+    } else if (error.code === 'invalid-argument') {
       description = `Requisição inválida para ${collectionName}. Isso pode ser um sinal de que as credenciais do Firebase (API Key, Project ID) no seu arquivo .env estão incorretas.`;
     } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('client is offline'))) {
-       description = `Não foi possível carregar ${collectionName}. Verifique sua conexão com a internet.`;
+       description = `Não foi possível carregar dados de ${collectionName}. O aplicativo parece estar offline. Isso pode ser um problema de conexão com a internet ou, mais comumente, um problema com as Regras de Segurança do Firestore que estão bloqueando o acesso. Por favor, verifique ambos.`;
     }
     
     toast({ 
@@ -55,7 +54,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user) {
       setAppData({ urinaryLogs: [], erectileLogs: [], psaLogs: [] });
-      setLoadingData(false); 
+      setLoadingData(false); // No user, so not loading.
       return;
     }
 
@@ -65,6 +64,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       { key: 'erectileLogs', path: 'erectile_logs', name: 'função erétil' },
       { key: 'psaLogs', path: 'psa_logs', name: 'resultados PSA' },
     ];
+
+    // Track which collections have loaded their initial data
+    const loadedCollections = new Set<keyof AppData>();
     
     const unsubscribes = collectionsToSubscribe.map(({ key, path, name }) => {
       const q = query(collection(db, 'users', user.uid, path), orderBy('date', 'desc'));
@@ -77,12 +79,20 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             date: (doc.data().date as Timestamp).toDate().toISOString(),
           }));
           setAppData(prev => ({ ...prev, [key]: items }));
+
+          loadedCollections.add(key);
+          // Once all listeners have fired once, we can consider the initial load complete.
+          if (loadedCollections.size === collectionsToSubscribe.length) {
+            setLoadingData(false);
+          }
         },
-        (error: FirestoreError) => handleError(error, name)
+        (error: FirestoreError) => {
+          handleError(error, name);
+          // If any listener fails, we must stop loading to show the error.
+          setLoadingData(false);
+        }
       );
     });
-    
-    setLoadingData(false);
 
     return () => {
       unsubscribes.forEach(unsub => unsub());
