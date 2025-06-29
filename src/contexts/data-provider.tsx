@@ -32,49 +32,57 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user) {
       setAppData({ urinaryLogs: [], erectileLogs: [], psaLogs: [] });
-      setLoadingData(false);
+      setLoadingData(true);
       return;
     }
 
-    setLoadingData(true);
-
-    const handleSnapshot = (snapshot: QuerySnapshot, key: keyof AppData) => {
-      const items = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          date: (data.date as Timestamp).toDate().toISOString(),
-        };
-      });
-      setAppData(prevData => ({ ...prevData, [key]: items }));
-    };
-
+    const collectionsToSubscribe: { key: keyof AppData; path: string; name: string }[] = [
+      { key: 'urinaryLogs', path: 'urinary_logs', name: 'sintomas urinários' },
+      { key: 'erectileLogs', path: 'erectile_logs', name: 'função erétil' },
+      { key: 'psaLogs', path: 'psa_logs', name: 'resultados PSA' },
+    ];
+    
     const handleError = (error: FirestoreError, collectionName: string) => {
       console.error(`Error fetching ${collectionName}: `, error);
       let description = `Não foi possível carregar os dados de ${collectionName}.`;
-      if (error.code === 'permission-denied') {
-        description = `Acesso negado ao carregar ${collectionName}. Verifique as regras de segurança do Firestore.`;
+
+      const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+      if (!apiKey || !apiKey.startsWith('AIza')) {
+          description = "A chave de API do Firebase está faltando ou é inválida. Verifique seu arquivo .env.local.";
+      } else if (error.code === 'permission-denied' || error.message.includes('400')) {
+        description = `Acesso negado ou requisição inválida para ${collectionName}. Isso geralmente é causado por credenciais de configuração incorretas no arquivo .env.local ou por regras de segurança do Firestore que não permitem o acesso.`;
       } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('client is offline'))) {
-         description = `Não foi possível carregar ${collectionName}. Verifique sua conexão com a internet ou as permissões do Firestore.`;
+         description = `Não foi possível carregar ${collectionName}. Verifique sua conexão com a internet.`;
       }
-      toast({ title: "Erro ao buscar dados", description, variant: "destructive" });
+      
+      toast({ 
+        title: "Erro de Conexão com o Banco de Dados", 
+        description, 
+        variant: "destructive",
+        duration: 9000
+      });
+      setLoadingData(false);
     };
-    
-    const urinaryQuery = query(collection(db, 'users', user.uid, 'urinary_logs'), orderBy('date', 'desc'));
-    const erectileQuery = query(collection(db, 'users', user.uid, 'erectile_logs'), orderBy('date', 'desc'));
-    const psaQuery = query(collection(db, 'users', user.uid, 'psa_logs'), orderBy('date', 'desc'));
 
-    const unsubUrinary = onSnapshot(urinaryQuery, (snapshot) => handleSnapshot(snapshot, 'urinaryLogs'), (error) => handleError(error, 'sintomas urinários'));
-    const unsubErectile = onSnapshot(erectileQuery, (snapshot) => handleSnapshot(snapshot, 'erectileLogs'), (error) => handleError(error, 'função erétil'));
-    const unsubPSA = onSnapshot(psaQuery, (snapshot) => handleSnapshot(snapshot, 'psaLogs'), (error) => handleError(error, 'resultados PSA'));
-
-    setLoadingData(false);
+    const unsubscribes = collectionsToSubscribe.map(({ key, path, name }) => {
+      const q = query(collection(db, 'users', user.uid, path), orderBy('date', 'desc'));
+      
+      return onSnapshot(q, 
+        (snapshot: QuerySnapshot) => {
+          const items = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            date: (doc.data().date as Timestamp).toDate().toISOString(),
+          }));
+          setAppData(prev => ({ ...prev, [key]: items }));
+          setLoadingData(false);
+        },
+        (error: FirestoreError) => handleError(error, name)
+      );
+    });
 
     return () => {
-      unsubUrinary();
-      unsubErectile();
-      unsubPSA();
+      unsubscribes.forEach(unsub => unsub());
     };
   }, [user, toast]);
 

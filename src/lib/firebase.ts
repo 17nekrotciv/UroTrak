@@ -22,7 +22,7 @@ const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
 if (!apiKey || apiKey === "YOUR_API_KEY_HERE" || apiKey.trim() === "" || !apiKey.startsWith("AIza")) {
-  console.error(
+  throw new Error(
     "ERRO CRÍTICO DE CONFIGURAÇÃO DO FIREBASE: " +
     "A variável NEXT_PUBLIC_FIREBASE_API_KEY não está definida, está usando um valor de placeholder, ou parece inválida. " +
     "Por favor, verifique seu arquivo .env ou .env.local e adicione suas credenciais reais do Firebase. " +
@@ -30,7 +30,7 @@ if (!apiKey || apiKey === "YOUR_API_KEY_HERE" || apiKey.trim() === "" || !apiKey
     "Após adicionar as chaves, REINICIE o servidor de desenvolvimento."
   );
 } else if (!projectId || projectId === "YOUR_PROJECT_ID_HERE" || projectId.trim() === "") {
-  console.error(
+   throw new Error(
     "ERRO DE CONFIGURAÇÃO DO FIREBASE: " +
     "A variável NEXT_PUBLIC_FIREBASE_PROJECT_ID não está definida ou está usando um valor de placeholder. " +
     "Verifique seu arquivo .env ou .env.local."
