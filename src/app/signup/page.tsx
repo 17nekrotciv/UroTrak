@@ -70,7 +70,7 @@ export default function SignupPage() {
           errorMessage = `O popup de cadastro com ${providerName} foi bloqueado pelo navegador. Por favor, habilite popups para este site.`;
           break;
         case 'permission-denied': 
-           errorMessage = "Falha ao salvar dados do usuário: permissão negada. Verifique as regras de segurança do Firestore.";
+           errorMessage = "Falha ao salvar dados do usuário: permissão negada. Verifique as Regras de Segurança do Firestore para permitir a escrita na coleção 'users'.";
            break;
         default:
           errorMessage = `Erro no cadastro (${firebaseError.code})${providerName ? ` com ${providerName}` : ''}: ${firebaseError.message || 'Tente novamente.'}`;

@@ -6,7 +6,6 @@ import {
   FacebookAuthProvider,
   OAuthProvider
 } from 'firebase/auth';
-// Atualizado: Importar initializeFirestore e persistentLocalCache
 import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
@@ -21,38 +20,37 @@ const firebaseConfig: FirebaseOptions = {
 const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-if (!apiKey || apiKey === "YOUR_API_KEY_HERE" || apiKey.trim() === "" || !apiKey.startsWith("AIza")) {
+// Verificação rigorosa para garantir que as credenciais do Firebase estão configuradas.
+// Isso causa uma "falha rápida" durante o desenvolvimento se as chaves estiverem ausentes ou incorretas.
+if (!apiKey || apiKey.trim() === "" || !apiKey.startsWith("AIza")) {
   throw new Error(
     "ERRO CRÍTICO DE CONFIGURAÇÃO DO FIREBASE: " +
-    "A variável NEXT_PUBLIC_FIREBASE_API_KEY não está definida, está usando um valor de placeholder, ou parece inválida. " +
-    "Por favor, verifique seu arquivo .env ou .env.local e adicione suas credenciais reais do Firebase. " +
-    "A aplicação provavelmente não funcionará corretamente até que isso seja resolvido. " +
-    "Após adicionar as chaves, REINICIE o servidor de desenvolvimento."
+    "A variável NEXT_PUBLIC_FIREBASE_API_KEY não está definida ou parece inválida no seu arquivo .env. " +
+    "Por favor, verifique suas credenciais no Console do Firebase e adicione-as ao arquivo .env (ou .env.local). " +
+    "A aplicação não funcionará corretamente até que isso seja resolvido. " +
+    "Lembre-se de REINICIAR o servidor de desenvolvimento após adicionar as chaves."
   );
-} else if (!projectId || projectId === "YOUR_PROJECT_ID_HERE" || projectId.trim() === "") {
+} else if (!projectId || projectId.trim() === "") {
    throw new Error(
     "ERRO DE CONFIGURAÇÃO DO FIREBASE: " +
-    "A variável NEXT_PUBLIC_FIREBASE_PROJECT_ID não está definida ou está usando um valor de placeholder. " +
-    "Verifique seu arquivo .env ou .env.local."
+    "A variável NEXT_PUBLIC_FIREBASE_PROJECT_ID não está definida no seu arquivo .env. " +
+    "Verifique seu arquivo .env (ou .env.local)."
   );
 }
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
-// Inicializar o Firestore com as configurações de cache persistente usando a nova API
+// Inicializa o Firestore com cache persistente para funcionamento offline.
 const db = initializeFirestore(app, {
   cache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
 });
 
-// A chamada antiga para enableIndexedDbPersistence() foi removida.
-// O Firestore agora lida com a inicialização do cache internamente com base nas configurações fornecidas.
-
-// Auth Providers
+// Provedores de Autenticação
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
-const appleProvider = new OAuthProvider('apple.com'); // Requires specific configuration in Firebase console
-const microsoftProvider = new OAuthProvider('microsoft.com'); // Requires specific configuration in Firebase console
+const appleProvider = new OAuthProvider('apple.com');
+const microsoftProvider = new OAuthProvider('microsoft.com');
 
 export {
   app,

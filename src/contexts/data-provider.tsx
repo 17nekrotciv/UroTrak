@@ -29,41 +29,43 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   });
   const [loadingData, setLoadingData] = useState(true);
 
+  const handleError = useCallback((error: FirestoreError, collectionName: string) => {
+    console.error(`Error fetching ${collectionName}: `, error.code, error.message);
+    let description = `Não foi possível carregar os dados de ${collectionName}.`;
+
+    if (error.code === 'permission-denied' || error.message.includes('403')) {
+      description = `Acesso negado para buscar dados de ${collectionName}. Isso geralmente é causado por Regras de Segurança do Firestore que não permitem a leitura. Verifique suas regras no Console do Firebase.`;
+    } else if (error.code === 'unauthenticated' || error.message.includes('401')) {
+        description = `Usuário não autenticado para buscar dados de ${collectionName}.`;
+    } else if (error.code === 'invalid-argument' || error.message.includes('400')) {
+      description = `Requisição inválida para ${collectionName}. Isso pode ser um sinal de que as credenciais do Firebase (API Key, Project ID) no seu arquivo .env estão incorretas.`;
+    } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('client is offline'))) {
+       description = `Não foi possível carregar ${collectionName}. Verifique sua conexão com a internet.`;
+    }
+    
+    toast({ 
+      title: "Erro de Conexão com o Banco de Dados", 
+      description, 
+      variant: "destructive",
+      duration: 10000 
+    });
+    setLoadingData(false);
+  }, [toast]);
+
   useEffect(() => {
     if (!user) {
       setAppData({ urinaryLogs: [], erectileLogs: [], psaLogs: [] });
-      setLoadingData(true);
+      setLoadingData(false); 
       return;
     }
 
+    setLoadingData(true);
     const collectionsToSubscribe: { key: keyof AppData; path: string; name: string }[] = [
       { key: 'urinaryLogs', path: 'urinary_logs', name: 'sintomas urinários' },
       { key: 'erectileLogs', path: 'erectile_logs', name: 'função erétil' },
       { key: 'psaLogs', path: 'psa_logs', name: 'resultados PSA' },
     ];
     
-    const handleError = (error: FirestoreError, collectionName: string) => {
-      console.error(`Error fetching ${collectionName}: `, error);
-      let description = `Não foi possível carregar os dados de ${collectionName}.`;
-
-      const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-      if (!apiKey || !apiKey.startsWith('AIza')) {
-          description = "A chave de API do Firebase está faltando ou é inválida. Verifique seu arquivo .env.local.";
-      } else if (error.code === 'permission-denied' || error.message.includes('400')) {
-        description = `Acesso negado ou requisição inválida para ${collectionName}. Isso geralmente é causado por credenciais de configuração incorretas no arquivo .env.local ou por regras de segurança do Firestore que não permitem o acesso.`;
-      } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('client is offline'))) {
-         description = `Não foi possível carregar ${collectionName}. Verifique sua conexão com a internet.`;
-      }
-      
-      toast({ 
-        title: "Erro de Conexão com o Banco de Dados", 
-        description, 
-        variant: "destructive",
-        duration: 9000
-      });
-      setLoadingData(false);
-    };
-
     const unsubscribes = collectionsToSubscribe.map(({ key, path, name }) => {
       const q = query(collection(db, 'users', user.uid, path), orderBy('date', 'desc'));
       
@@ -75,16 +77,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             date: (doc.data().date as Timestamp).toDate().toISOString(),
           }));
           setAppData(prev => ({ ...prev, [key]: items }));
-          setLoadingData(false);
         },
         (error: FirestoreError) => handleError(error, name)
       );
     });
+    
+    setLoadingData(false);
 
     return () => {
       unsubscribes.forEach(unsub => unsub());
     };
-  }, [user, toast]);
+  }, [user, handleError]);
 
   const addLog = async <T extends { date: Date }>(collectionName: string, log: Omit<T, 'id'> ) => {
     if (!user) {
