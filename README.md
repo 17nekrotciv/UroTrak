@@ -1,3 +1,4 @@
+
 # UroTrack - Acompanhamento Pós-Prostatectomia
 
 Este é o projeto para o UroTrack, um aplicativo desenvolvido com Next.js, Firebase e ShadCN UI para ajudar pacientes no acompanhamento da recuperação após prostatectomia radical.
@@ -70,7 +71,18 @@ Para conectar o aplicativo ao seu projeto Firebase, você precisa fornecer as cr
 4.  Na aba "Geral", em "Seus apps", encontre e copie as credenciais do seu aplicativo da Web.
 5.  Cole os valores correspondentes no seu arquivo `.env.local`.
 
-### 4. Rode o Servidor de Desenvolvimento
+### 4. ATUALIZE AS REGRAS DE SEGURANÇA (PASSO CRÍTICO)
+
+Por padrão, seu banco de dados é bloqueado. Para que o aplicativo possa salvar os dados, você precisa atualizar as Regras de Segurança.
+
+1.  Acesse o [Console do Firebase](https://console.firebase.google.com/) e navegue até seu projeto.
+2.  No menu de construção à esquerda, vá para **Firestore Database**.
+3.  Clique na aba **Regras** no topo.
+4.  Copie **todo o conteúdo** do arquivo `firestore.rules` que está no seu projeto.
+5.  Cole o conteúdo no editor de regras do Firebase, **substituindo completamente** as regras existentes.
+6.  Clique em **Publicar**.
+
+### 5. Rode o Servidor de Desenvolvimento
 
 Agora você está pronto para iniciar o servidor de desenvolvimento do Next.js:
 
@@ -90,20 +102,18 @@ Este projeto está configurado para uma ótima experiência no Visual Studio Cod
   - `esbenp.prettier-vscode`
   - `bradlc.vscode-tailwindcss`
 
-## Deploy com Firebase App Hosting
+## Deploy
 
-Este projeto está configurado para fazer deploy facilmente usando o Firebase App Hosting.
+### Deploy do Código do Aplicativo (App Hosting)
 
-1.  **Login no Firebase:**
-    Se for a primeira vez, faça login na sua conta do Google:
-    ```bash
-    firebase login
-    ```
+Quando estiver pronto para publicar suas alterações no aplicativo, execute o seguinte comando na raiz do seu projeto:
+```bash
+firebase deploy --only hosting
+```
 
-2.  **Faça o Deploy:**
-    Quando estiver pronto para publicar suas alterações, execute o seguinte comando na raiz do seu projeto:
-    ```bash
-    firebase deploy --only hosting
-    ```
+### Deploy das Regras do Banco de Dados (Firestore)
 
-O Firebase CLI irá compilar seu projeto Next.js e fazer o deploy para o App Hosting. Ao final, ele fornecerá a URL do seu aplicativo publicado.
+Se você alterar o arquivo `firestore.rules`, pode fazer o deploy das novas regras com este comando:
+```bash
+firebase deploy --only firestore
+```
