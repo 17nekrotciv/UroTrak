@@ -43,7 +43,7 @@ const auth = getAuth(app);
 
 // Inicializa o Firestore com cache persistente para funcionamento offline.
 const db = initializeFirestore(app, {
-  cache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
+  localCache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
 });
 
 // Provedores de Autenticação
