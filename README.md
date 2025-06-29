@@ -2,9 +2,41 @@
 
 Este é o projeto para o UroTrack, um aplicativo desenvolvido com Next.js, Firebase e ShadCN UI para ajudar pacientes no acompanhamento da recuperação após prostatectomia radical.
 
+## Vinculando a um Repositório GitHub (Primeira Vez)
+
+Se você iniciou este projeto localmente e ainda não o conectou a um repositório no GitHub, siga estes passos:
+
+1.  **Crie um Repositório no GitHub:**
+    *   Vá para [GitHub](https://github.com/new).
+    *   Dê um nome ao seu repositório (ex: `urotrack-app`).
+    *   **Importante:** Não inicialize o novo repositório com `README`, `.gitignore` ou licença. Seu projeto já possui esses arquivos. Deixe-o vazio.
+    *   Clique em "Create repository".
+
+2.  **Execute os Comandos no Seu Terminal:**
+    Abra o terminal na pasta raiz do seu projeto e execute os seguintes comandos. Copie a URL do seu novo repositório do GitHub (será algo como `https://github.com/seu-usuario/urotrack-app.git`).
+
+    ```bash
+    # Inicializa o Git no seu projeto (se ainda não foi feito)
+    git init -b main
+
+    # Adiciona todos os arquivos para o Git
+    git add .
+
+    # Cria o primeiro "commit" (um snapshot do seu código)
+    git commit -m "Primeiro commit: configuração inicial do projeto UroTrack"
+
+    # Vincula seu projeto local ao repositório remoto no GitHub (substitua a URL)
+    git remote add origin https://github.com/seu-usuario/urotrack-app.git
+
+    # Envia (push) seu código para o GitHub
+    git push -u origin main
+    ```
+
+    Agora seu código está no GitHub!
+
 ## Primeiros Passos (Desenvolvimento Local)
 
-Siga estas instruções para configurar e rodar o projeto em sua máquina local para desenvolvimento e testes.
+Se você já clonou o projeto do GitHub, siga estas instruções para configurar e rodar o projeto em sua máquina local.
 
 ### Pré-requisitos
 
@@ -13,7 +45,7 @@ Siga estas instruções para configurar e rodar o projeto em sua máquina local 
 
 ### 1. Clone o Projeto
 
-Primeiro, clone este repositório para a sua máquina local:
+Se você ainda não clonou, use o comando abaixo substituindo a URL:
 
 ```bash
 git clone <URL_DO_SEU_REPOSITÓRIO>
