@@ -30,16 +30,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   const handleError = useCallback((error: FirestoreError, collectionName: string) => {
     console.error(`Error fetching ${collectionName}: `, error.code, error.message);
-    let description = `Não foi possível carregar os dados de ${collectionName}.`;
+    let description = `Não foi possível carregar os dados de '${collectionName}'.`;
 
     if (error.code === 'permission-denied') {
-      description = `Acesso negado para buscar dados de ${collectionName}. Isso geralmente é causado por Regras de Segurança do Firestore que não permitem a leitura. Verifique suas regras no Console do Firebase.`;
+      description = `Acesso negado para buscar dados de '${collectionName}'. A causa é quase sempre as Regras de Segurança do Firestore. Verifique suas regras no Console do Firebase.`;
     } else if (error.code === 'unauthenticated') {
-      description = `Usuário não autenticado para buscar dados de ${collectionName}.`;
+      description = `Usuário não autenticado para buscar dados de '${collectionName}'.`;
     } else if (error.code === 'invalid-argument') {
-      description = `Requisição inválida para ${collectionName}. Isso pode ser um sinal de que as credenciais do Firebase (API Key, Project ID) no seu arquivo .env estão incorretas.`;
+      description = `Requisição inválida para '${collectionName}'. Isso pode ser um sinal de que as credenciais do Firebase (API Key, Project ID) no seu arquivo .env.local estão incorretas.`;
     } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('client is offline'))) {
-      description = `Erro ao buscar dados de ${collectionName}. O aplicativo indica 'offline'. **Esta é a causa mais comum de Regras de Segurança do Firestore incorretas.** Por favor, vá ao seu console do Firebase, na seção Firestore > Regras, e garanta que as regras do arquivo 'firestore.rules' do projeto foram aplicadas. Se as regras estiverem corretas, verifique sua conexão com a internet.`;
+      description = `Falha ao buscar dados de '${collectionName}'. O erro é 'client is offline', o que quase sempre indica um problema de **Regras de Segurança do Firestore**. Verifique se você aplicou o conteúdo do arquivo 'firestore.rules' no seu projeto do Firebase.`;
     }
     toast({
       title: "Erro de Conexão com o Banco de Dados",
