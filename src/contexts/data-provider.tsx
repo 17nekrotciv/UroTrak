@@ -54,9 +54,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!user) {
       setAppData({ urinaryLogs: [], erectileLogs: [], psaLogs: [] });
-      setLoadingData(true); // Set to true until we confirm there is no user
-      const timer = setTimeout(() => setLoadingData(false), 500); // Prevent flicker for logged in users
-      return () => clearTimeout(timer);
+      setLoadingData(false); 
+      return;
     }
   
     setLoadingData(true);
@@ -69,7 +68,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribes = collectionsToSubscribe.map(({ key, path, name }) => {
       const q = query(collection(db, 'users', user.uid, path), orderBy('date', 'desc'));
       
-      const unsubscribe = onSnapshot(q, 
+      return onSnapshot(q, 
         (snapshot: QuerySnapshot) => {
           const items = snapshot.docs.map((doc) => ({
             id: doc.id,
@@ -77,31 +76,24 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             date: (doc.data().date as Timestamp).toDate().toISOString(),
           }));
           setAppData(prev => ({ ...prev, [key]: items }));
-          setLoadingData(false); // Stop loading once first data comes in
+          // This ensures loading is only false after all initial listeners are set up
         },
         (error: FirestoreError) => {
           handleError(error, name);
           setLoadingData(false);
         }
       );
-      return unsubscribe;
     });
+
+    // Once all listeners are attached, we can consider the initial loading phase complete.
+    // The listeners will handle subsequent updates.
+    setLoadingData(false);
   
     return () => {
       unsubscribes.forEach(unsub => unsub());
     };
   }, [user, handleError]);
 
-  // ====================================================================================
-  // ==  FUNÇÃO PRINCIPAL PARA ADICIONAR REGISTROS (O "ADD")  ============================
-  // ====================================================================================
-  // Esta é a função genérica e central que adiciona um novo registro (documento)
-  // ao Firestore. Ela é reutilizada por todas as funções de adição de dados.
-  //
-  // Parâmetros:
-  // - collectionName: O nome da coleção no Firestore (ex: 'urinary_logs').
-  // - log: O objeto de dados a ser salvo.
-  //
   const addLog = async <T extends { date: Date }>(collectionName: string, log: Omit<T, 'id'> ) => {
     if (!user) {
       console.error("User not logged in to add data.");
@@ -116,19 +108,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // ====================================================================================
-  // ==  FUNÇÕES ESPECÍFICAS EXPORTADAS (USADAS PELAS PÁGINAS)  =========================
-  // ====================================================================================
-  // As páginas do seu aplicativo (como a de Sintomas Urinários) usam estas funções
-  // para adicionar dados. Elas atuam como atalhos para a função `addLog` acima.
-
-  // Adiciona um registro de sintoma urinário.
   const addUrinaryLog = (log: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date }) => addLog('urinary_logs', log);
 
-  // Adiciona um registro de função erétil.
   const addErectileLog = (log: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date }) => addLog('erectile_logs', log);
 
-  // Adiciona um registro de resultado de PSA.
   const addPSALog = (log: Omit<PSALogEntry, 'id' | 'date'> & { date: Date }) => addLog('psa_logs', log);
 
   return (
