@@ -33,6 +33,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# genkit
+.genkit/
+.genkit-cache/

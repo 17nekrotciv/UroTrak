@@ -46,7 +46,7 @@ Para que o aplicativo funcione, é **essencial** que a conexão com o Firebase e
     NEXT_PUBLIC_FIREBASE_PROJECT_ID="seu-projeto"
     # ... e assim por diante
     ```
-4.  **Reinicie o Servidor:** Após salvar o `.env.local`, **pare (Ctrl+C) e reinicie (`npm run dev`)** o seu servidor de desenvolvimento.
+4.  **Reinicie o Servidor:** Após salvar o `.env.local`, **pare (Ctrl+C) e reinicie (`npm run dev`)** o seu servidor de desenvolvimento. O aplicativo tem uma verificação que irá travar o servidor com um erro claro no terminal se as chaves estiverem faltando.
 
 ### Passo 3: Atualizar as Regras de Segurança (MUITO IMPORTANTE)
 
