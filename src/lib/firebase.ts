@@ -17,27 +17,6 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-
-// Verificação rigorosa para garantir que as credenciais do Firebase estão configuradas.
-// Isso causa uma "falha rápida" durante o desenvolvimento se as chaves estiverem ausentes ou incorretas.
-if (!apiKey || apiKey.trim() === "" || !apiKey.startsWith("AIza")) {
-  throw new Error(
-    "ERRO CRÍTICO DE CONFIGURAÇÃO DO FIREBASE: " +
-    "A variável NEXT_PUBLIC_FIREBASE_API_KEY não está definida ou parece inválida no seu arquivo .env.local. " +
-    "Por favor, verifique suas credenciais no Console do Firebase e adicione-as ao arquivo .env.local. " +
-    "A aplicação não funcionará corretamente até que isso seja resolvido. " +
-    "Lembre-se de REINICIAR o servidor de desenvolvimento após adicionar as chaves."
-  );
-} else if (!projectId || projectId.trim() === "") {
-   throw new Error(
-    "ERRO DE CONFIGURAÇÃO DO FIREBASE: " +
-    "A variável NEXT_PUBLIC_FIREBASE_PROJECT_ID não está definida no seu arquivo .env.local. " +
-    "Verifique seu arquivo .env.local."
-  );
-}
-
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
@@ -76,7 +55,7 @@ export async function testFirebaseConnection(): Promise<{ success: boolean; mess
     if (error.code === 'permission-denied') {
       message += 'Causa provável: Permissão negada. As Regras de Segurança do Firestore não foram atualizadas corretamente no Console do Firebase. Copie o conteúdo de `firestore.rules` e cole no seu projeto.';
     } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('offline'))) {
-       message += 'Causa provável: O cliente está offline. Isso geralmente significa que as credenciais no seu arquivo `.env.local` (API Key, Project ID, etc.) estão incorretas ou ausentes. Verifique o arquivo e reinicie o servidor.';
+       message += `Causa provável: O cliente está offline. Isso geralmente significa que as credenciais no seu arquivo \`.env.local\` (API Key, Project ID, etc.) estão incorretas ou ausentes. Verifique o arquivo e reinicie o servidor.`;
     } else {
       message += `Erro inesperado: ${error.message} (código: ${error.code || 'N/A'})`;
     }
