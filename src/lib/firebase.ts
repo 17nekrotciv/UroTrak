@@ -6,7 +6,7 @@ import {
   FacebookAuthProvider,
   OAuthProvider
 } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, doc, getDoc } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, doc, getDoc, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,10 +20,16 @@ const firebaseConfig: FirebaseOptions = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 
-// Inicializa o Firestore com cache persistente para funcionamento offline.
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
-});
+try {
+  initializeFirestore(app, {
+      localCache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
+  });
+} catch (error) {
+  // Isso evita erros em ambientes de desenvolvimento onde o código pode rodar mais de uma vez.
+  console.warn("Firestore já foi inicializado. Ignorando reinicialização.");
+}
+
+const db = getFirestore(app, 'uritrak');
 
 // Provedores de Autenticação
 const googleProvider = new GoogleAuthProvider();

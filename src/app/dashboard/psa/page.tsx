@@ -1,8 +1,7 @@
-// src/app/dashboard/psa/page.tsx
 "use client";
 
-import React, { useState } from 'react';
-import { useForm, type SubmitHandler, useFieldArray } from 'react-hook-form';
+import React, { useState, useRef } from 'react';
+import { useForm, type SubmitHandler, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -14,11 +13,12 @@ import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
 import type { PSALogEntry } from '@/types';
-import { Loader2, ClipboardList, Save, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, ClipboardList, Save, Edit, XCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
+import { format, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from "@/components/ui/toast";
 import { useAuth } from '@/contexts/auth-provider';
 import { useRouter } from 'next/navigation';
 
@@ -46,10 +46,13 @@ const getDefaultPSAEntry = (): SinglePSAEntryInput => ({
 
 export default function PSAPage() {
   const { user } = useAuth();
-  const { appData, addPSALog, loadingData } = useData();
+  // Assumindo que updatePSALog será adicionado ao seu data-provider
+  const { appData, addPSALog, updatePSALog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const { control, register, handleSubmit, reset, formState: { errors } } = useForm<PSAFormInputs>({
     resolver: zodResolver(psaFormSchema),
@@ -58,10 +61,33 @@ export default function PSAPage() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields } = useFieldArray({
     control,
     name: "entries",
   });
+
+  const watchedDate = useWatch({
+    control,
+    name: `entries.0.date`,
+  });
+
+  const handleStartEdit = (log: PSALogEntry) => {
+    if (!log.id) return;
+    setEditingLogId(log.id);
+    const entryToEdit = {
+        ...log,
+        date: new Date(log.date).toISOString(),
+    };
+    reset({ entries: [entryToEdit] });
+    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+    toast({ title: "Modo de Edição", description: `Você está editando o resultado do dia ${format(new Date(log.date), "dd/MM/yyyy")}.`});
+  };
+
+  const handleCancelEdit = () => {
+    setEditingLogId(null);
+    reset({ entries: [getDefaultPSAEntry()] });
+    toast({ title: "Edição Cancelada", description: "O formulário foi restaurado para adicionar um novo resultado."});
+  };
 
   const onSubmit: SubmitHandler<PSAFormInputs> = async (data) => {
     if (!user) {
@@ -69,81 +95,88 @@ export default function PSAPage() {
       return;
     }
 
-    if (data.entries.length === 0) {
-      toast({ title: "Nenhum registro", description: "Adicione pelo menos um resultado para salvar.", variant: "default" });
-      return;
-    }
-
     setIsSubmitting(true);
-    
-    const submissionPromises = data.entries.map(entry => {
-        const logData: Omit<PSALogEntry, 'id'|'date'> & { date: Date } = {
-            ...entry,
-            date: new Date(entry.date),
-            psaValue: entry.psaValue ?? null,
-        };
-        return addPSALog(logData).then(() => ({ status: 'fulfilled' as const })).catch(error => ({ status: 'rejected' as const, reason: error }));
-    });
+    const entryData = data.entries[0];
 
-    const results = await Promise.all(submissionPromises);
-    
-    setIsSubmitting(false);
-
-    const successfulSubmissions = results.filter(r => r.status === 'fulfilled').length;
-    const failedSubmissions = results.filter(r => r.status === 'rejected');
-
-    if (failedSubmissions.length > 0) {
-        const firstError = failedSubmissions[0].reason;
-        console.error("Falha ao salvar resultados de PSA:", failedSubmissions.map(f => f.reason));
-
-        let description = "Ocorreu um erro desconhecido ao salvar.";
-        if (firstError.code === 'permission-denied') {
-            description = "Permissão negada. Verifique se as Regras de Segurança do Firestore foram aplicadas corretamente no Console do Firebase. Esta é a causa mais provável do problema.";
+    try {
+        if (editingLogId) {
+            // Lógica de atualização
+            await updatePSALog(editingLogId, {
+                ...entryData,
+                date: new Date(entryData.date),
+                psaValue: entryData.psaValue ?? null,
+            });
+            toast({ title: "Sucesso", description: "O resultado foi atualizado com sucesso." });
+            setEditingLogId(null);
+            reset({ entries: [getDefaultPSAEntry()] });
         } else {
-            description = `Detalhe do erro: ${firstError.message}`;
-        }
-        
-        let title = "Erro ao Salvar";
-        let finalDescription = `Falha ao salvar ${failedSubmissions.length} resultado(s). ${description}`;
+            // Lógica de criação
+            const existingEntry = appData.psaLogs.find(log => 
+                isSameDay(parseISO(log.date), new Date(entryData.date))
+            );
 
-        if (successfulSubmissions > 0) {
-            title = "Parcialmente Salvo";
-            finalDescription = `${successfulSubmissions} resultado(s) salvo(s). ${finalDescription}`;
-        }
+            if (existingEntry) {
+                toast({
+                    title: "Resultado Duplicado",
+                    description: "Já existe um resultado para esta data. Deseja editá-lo?",
+                    variant: "destructive",
+                    action: <ToastAction altText="Editar" onClick={() => handleStartEdit(existingEntry)}>Editar</ToastAction>,
+                });
+                setIsSubmitting(false);
+                return;
+            }
 
-        toast({
-            title: title,
-            description: finalDescription,
-            variant: "destructive",
-            duration: 10000,
-        });
-    }
-
-    if (successfulSubmissions > 0) {
-        reset({ entries: [getDefaultPSAEntry()] });
-        if (failedSubmissions.length === 0) {
+            await addPSALog({
+                ...entryData,
+                date: new Date(entryData.date),
+                psaValue: entryData.psaValue ?? null,
+            });
+            toast({ title: "Sucesso", description: "Novo resultado salvo com sucesso." });
+            reset({ entries: [getDefaultPSAEntry()] });
             setTimeout(() => router.push('/dashboard/success'), 100);
         }
+    } catch (error: any) {
+        console.error("Falha ao salvar resultado de PSA:", error);
+        let description = "Ocorreu um erro desconhecido ao salvar.";
+        if (error.code === 'permission-denied') {
+            description = "Permissão negada. Verifique suas regras de segurança do Firestore.";
+        } else {
+            description = `Detalhe do erro: ${error.message}`;
+        }
+        toast({ title: "Erro ao Salvar", description, variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
   return (
     <>
-      <PageHeader title="Resultados PSA" description="Registre seus resultados de exames PSA. Adicione múltiplos resultados de uma vez." icon={ClipboardList} />
+      <PageHeader title="Resultados PSA Total" description="Registre ou edite seus resultados de exames PSA." icon={ClipboardList} />
       
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {fields.map((field, index) => (
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {fields.slice(0, 1).map((field, index) => (
           <Card key={field.id} className="mb-6 shadow-md p-4 relative">
             <CardHeader className="p-2 -mt-2">
-              <CardTitle className="font-headline text-lg">Resultado PSA {index + 1}</CardTitle>
+              <CardTitle className="font-headline text-lg">
+                {editingLogId ? 'Editando Resultado PSA' : 'Novo Resultado PSA'}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 p-2">
-              <DatePickerField 
-                control={control} 
-                name={`entries.${index}.date`} 
-                label="Data do Exame" 
-                error={errors.entries?.[index]?.date?.message} 
-              />
+              <div className="space-y-2">
+                <Label>Data do Exame</Label>
+                {editingLogId ? (
+                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
+                        {watchedDate ? format(new Date(watchedDate), 'dd/MM/yyyy') : 'N/A'}
+                    </div>
+                ) : (
+                    <DatePickerField 
+                      control={control} 
+                      name={`entries.${index}.date`} 
+                      label=""
+                      error={errors.entries?.[index]?.date?.message} 
+                    />
+                )}
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor={`entries.${index}.psaValue`}>Valor do PSA (ng/mL)</Label>
@@ -159,39 +192,29 @@ export default function PSAPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor={`entries.${index}.notes`}>Notas Adicionais (opcional)</Label>
-                <Textarea 
-                  id={`entries.${index}.notes`} 
-                  placeholder="Ex: Laboratório, observações médicas, etc." 
-                  {...register(`entries.${index}.notes`)} 
-                />
+                  <Label htmlFor={`entries.${index}.notes`}>Notas (opcional)</Label>
+                  <Textarea
+                      id={`entries.${index}.notes`}
+                      placeholder="Ex: Laboratório, observações, etc."
+                      {...register(`entries.${index}.notes`)}
+                  />
               </div>
               
-              {fields.length > 1 && (
-                <Button 
-                  type="button" 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={() => remove(index)} 
-                  className="absolute top-4 right-4"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Remover
-                </Button>
-              )}
             </CardContent>
           </Card>
         ))}
         
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button type="button" variant="outline" onClick={() => append(getDefaultPSAEntry())} className="w-full sm:w-auto">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Adicionar Outro Resultado PSA
-          </Button>
-          <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || fields.length === 0}>
+          <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Salvar {fields.length > 1 ? `${fields.length} Resultados` : 'Resultado'}
+            {editingLogId ? 'Salvar Alterações' : 'Salvar Novo Resultado'}
           </Button>
+          {editingLogId && (
+            <Button type="button" variant="outline" onClick={handleCancelEdit} className="w-full sm:w-auto">
+                <XCircle className="mr-2 h-4 w-4" />
+                Cancelar Edição
+            </Button>
+          )}
         </div>
         {errors.entries?.root && <p className="text-sm text-destructive mt-2">{errors.entries.root.message}</p>}
         {errors.entries && !errors.entries.root && errors.entries.length > 0 && (
@@ -214,10 +237,16 @@ export default function PSAPage() {
             <ScrollArea className="h-[300px] w-full rounded-md border p-4">
               <ul className="space-y-4">
                 {appData.psaLogs.map((log) => (
-                  <li key={log.id} className="p-3 bg-secondary/30 rounded-md text-sm">
-                    <p className="font-semibold">{format(new Date(log.date), "dd/MM/yyyy", { locale: ptBR })}</p>
-                    {log.psaValue !== null && <p>PSA: {log.psaValue.toFixed(2)} ng/mL</p>}
-                    {log.notes && <p>Notas: {log.notes}</p>}
+                  <li key={log.id} className="p-3 bg-secondary/30 rounded-md text-sm flex justify-between items-start">
+                    <div>
+                        <p className="font-semibold">{format(new Date(log.date), "dd/MM/yyyy", { locale: ptBR })}</p>
+                        {log.psaValue !== null && <p>PSA: {log.psaValue.toFixed(2)} ng/mL</p>}
+                        {log.notes && <p>Notas: {log.notes}</p>}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleStartEdit(log)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                    </Button>
                   </li>
                 ))}
               </ul>

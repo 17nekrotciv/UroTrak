@@ -23,7 +23,7 @@ export default function DashboardPage() {
   
   const psaDataForChart = appData.psaLogs
     .filter(log => log.psaValue !== null && log.psaValue !== undefined)
-    .map(log => ({ date: log.date, 'Valor PSA': log.psaValue! }));
+    .map(log => ({ date: log.date, 'Valor PSA Total': log.psaValue! }));
 
   const padChangesDataForChart = appData.urinaryLogs
     .filter(log => log.padChanges !== null && log.padChanges !== undefined)
@@ -68,7 +68,7 @@ export default function DashboardPage() {
             <GenericLineChart
               data={psaDataForChart}
               xAxisKey="date"
-              yAxisKey="Valor PSA"
+              yAxisKey="Valor PSA Total"
               yAxisLabel="PSA (ng/mL)"
               lineColor="hsl(var(--chart-1))"
             />
@@ -103,7 +103,7 @@ export default function DashboardPage() {
             <GenericLineChart
               data={padChangesDataForChart}
               xAxisKey="date"
-              yAxisKey="Trocas de Absorventes"
+              yAxisKey="Trocas de Absorventes por dia"
               yAxisLabel="Nº de Trocas"
               lineColor="hsl(var(--chart-3))"
             />

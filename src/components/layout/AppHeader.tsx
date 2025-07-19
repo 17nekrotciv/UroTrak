@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-provider';
 import { LogOut, UserCircle, Menu } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,15 @@ interface AppHeaderProps {
 
 export default function AppHeader({ onMenuClick }: AppHeaderProps) {
   const { user, logout } = useAuth();
+  
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`;
+    }
+    return name.substring(0, 2);
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/80 px-4 shadow-sm backdrop-blur-md sm:px-6">
@@ -53,7 +63,23 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              <UserCircle className="h-7 w-7 text-primary" />
+              {/* Este é o componente que você pode editar */}
+              <Avatar className="h-9 w-9">
+                {/* 
+                  O <AvatarImage /> tentará carregar a imagem do usuário.
+                  Você pode substituir o `src` por uma URL de imagem estática se desejar.
+                  Ex: <AvatarImage src="https://sua-imagem.com/avatar.png" alt={user.displayName || 'Avatar'} />
+                */}
+                <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'Avatar do usuário'} />
+                
+                {/* 
+                  O <AvatarFallback /> será exibido se a imagem não carregar ou não existir.
+                  Ele mostra as iniciais do nome do usuário.
+                */}
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {getInitials(user.displayName)}
+                </AvatarFallback>
+              </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>

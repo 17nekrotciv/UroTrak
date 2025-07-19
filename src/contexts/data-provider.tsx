@@ -1,11 +1,10 @@
-// src/contexts/data-provider.tsx
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { UrinaryLogEntry, ErectileLogEntry, PSALogEntry, AppData } from '@/types';
 import { useAuth } from './auth-provider';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, Timestamp, onSnapshot, type FirestoreError, type QuerySnapshot } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, query, orderBy, Timestamp, onSnapshot, type FirestoreError, type QuerySnapshot } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 
 interface DataContextType {
@@ -14,6 +13,9 @@ interface DataContextType {
   addUrinaryLog: (log: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
   addErectileLog: (log: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
   addPSALog: (log: Omit<PSALogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
+  updateErectileLog: (id: string, log: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
+  updateUrinaryLog: (id: string, log: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
+  updatePSALog: (id: string, log: Omit<PSALogEntry, 'id' | 'date'> & { date: Date }) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -50,12 +52,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !user.uid) {
       setAppData({ urinaryLogs: [], erectileLogs: [], psaLogs: [] });
       setLoadingData(false);
       return;
     }
     setLoadingData(true);
+
+    console.log('[DEBUG] Usuário para Listen:', { uid: user.uid, email: user.email });
     
     const collectionsToSubscribe: { key: keyof AppData; path: string; name: string }[] = [
       { key: 'urinaryLogs', path: 'urinary_logs', name: 'sintomas urinários' },
@@ -67,7 +71,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const totalListeners = collectionsToSubscribe.length;
 
     const unsubscribes = collectionsToSubscribe.map(({ key, path, name }) => {
-      const q = query(collection(db, 'users', user.uid, path), orderBy('date', 'desc'));
+      console.log(`Construindo consulta para o caminho: urotrak/${user.uid}/${path}`); 
+      const q = query(collection(db, 'urotrak', user.uid, path));
       
       const processSnapshotCompletion = () => {
         if (!initialLoads.has(key)) {
@@ -80,11 +85,20 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       
       const unsubscribe = onSnapshot(q,
         (snapshot: QuerySnapshot) => {
-          const items = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            date: (doc.data().date as Timestamp).toDate().toISOString(),
-          }));
+          const items = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            // Se o campo 'date' existir e for um Timestamp, converta-o.
+            // Senão, use null ou a data atual como um valor padrão.
+            const date = data.date && typeof data.date.toDate === 'function' 
+              ? (data.date as Timestamp).toDate().toISOString() 
+              : new Date().toISOString(); // Ou null
+          
+            return {
+              id: doc.id,
+              ...data,
+              date, // Usa a data processada e segura
+            };
+          });
           setAppData(prev => ({ ...prev, [key]: items }));
           processSnapshotCompletion();
         },
@@ -108,10 +122,25 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
     try {
       const logWithTimestamp = { ...log, date: Timestamp.fromDate(log.date) };
-      await addDoc(collection(db, 'users', user.uid, collectionName), logWithTimestamp);
+      await addDoc(collection(db, 'urotrak', user.uid, collectionName), logWithTimestamp);
     } catch (error) {
       console.error(`Error adding ${collectionName} log: `, error);
       throw error;
+    }
+  };
+
+  const updateLog = async <T extends { date: Date }>(collectionName: string, id: string, log: Omit<T, 'id'>) => {
+    if (!user) {
+        console.error("User not logged in to update data.");
+        throw new Error("Usuário não autenticado. Não é possível atualizar os dados.");
+    }
+    try {
+        const logWithTimestamp = { ...log, date: Timestamp.fromDate(log.date) };
+        const docRef = doc(db, 'urotrak', user.uid, collectionName, id);
+        await updateDoc(docRef, logWithTimestamp);
+    } catch (error) {
+        console.error(`Error updating ${collectionName} log: `, error);
+        throw error;
     }
   };
 
@@ -121,8 +150,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
   const addPSALog = (log: Omit<PSALogEntry, 'id' | 'date'> & { date: Date }) => addLog('psa_logs', log);
 
+  const updateUrinaryLog = (id: string, log: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date }) => updateLog('urinary_logs', id, log);
+
+  const updateErectileLog = (id: string, log: Omit<ErectileLogEntry, 'id' | 'date'> & { date: Date }) => updateLog('erectile_logs', id, log);
+
+  const updatePSALog = (id: string, log: Omit<PSALogEntry, 'id' | 'date'> & { date: Date }) => updateLog('psa_logs', id, log);
+
+
   return (
-    <DataContext.Provider value={{ appData, loadingData, addUrinaryLog, addErectileLog, addPSALog }}>
+    <DataContext.Provider value={{ appData, loadingData, addUrinaryLog, addErectileLog, addPSALog,updateUrinaryLog, updateErectileLog, updatePSALog }}>
       {children}
     </DataContext.Provider>
   );

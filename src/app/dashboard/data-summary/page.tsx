@@ -1,4 +1,3 @@
-// src/app/dashboard/data-summary/page.tsx
 "use client";
 
 import React from 'react';
@@ -36,6 +35,7 @@ const DataSection: React.FC<{ title: string; data: any[]; renderItem: (item: any
 export default function DataSummaryPage() {
   const { appData, loadingData } = useData();
 
+
   if (loadingData) {
     return (
       <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
@@ -58,10 +58,10 @@ export default function DataSummaryPage() {
   };
 
   const medicationMap: { [key: string]: string } = {
-    'none': 'Nenhuma',
-    'tadalafil5': 'Tadalafila 5mg',
-    'tadalafil20': 'Tadalafila 20mg',
-    'sildenafil': 'Sildenafila'
+    'none':'Nenhuma',
+    'tadalafil5': 'Tadalafila (Cialis) 5mg',
+    'tadalafil20': 'Tadalafila (Cialis) 20mg',
+    'sildenafil': 'Sildenafila (Viagra) 50mg'
   };
 
 
@@ -88,6 +88,7 @@ export default function DataSummaryPage() {
                 <p><strong>Data:</strong> {format(parseISO(log.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                 <p>Urgência: {log.urgency ? 'Sim' : 'Não'}</p>
                 <p>Ardência: {log.burning ? 'Sim' : 'Não'}</p>
+                <p>Fez Fisioterapia: {log.physiotherapyExercise ? 'Sim' : 'Não'}</p>
                 {log.lossGrams !== null && <p>Perda: {log.lossGrams}g</p>}
                 {log.padChanges !== null && <p>Absorventes: {log.padChanges}</p>}
               </>
@@ -97,14 +98,26 @@ export default function DataSummaryPage() {
           <DataSection
             title="Função Erétil"
             data={appData.erectileLogs}
-            renderItem={(log) => (
-              <>
-                <p><strong>Data:</strong> {format(parseISO(log.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-                <p>Qualidade da Ereção: {erectionQualityOptionsMap[log.erectionQuality] || log.erectionQuality}</p>
-                <p>Medicação Usada: {medicationMap[log.medicationUsed] || log.medicationUsed}</p>
-                {log.medicationNotes && <p>Notas sobre Medicação: {log.medicationNotes}</p>}
-              </>
-            )}
+            renderItem={(log) => {
+              // CORREÇÃO: Lógica para lidar com formato de medicação antigo (string) e novo (array)
+              let medicationText = 'Nenhuma';
+              if (Array.isArray(log.medicationUsed) && log.medicationUsed.length > 0) {
+                medicationText = log.medicationUsed
+                    .map((medId: string) => medicationMap[medId] || medId)
+                    .join(', ');
+              } else if (typeof log.medicationUsed === 'string' && log.medicationUsed !== 'none') {
+                  medicationText = medicationMap[log.medicationUsed] || log.medicationUsed;
+              }
+
+              return (
+                <>
+                  <p><strong>Data:</strong> {format(parseISO(log.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                  <p>Qualidade da Ereção: {erectionQualityOptionsMap[log.erectionQuality] || log.erectionQuality}</p>
+                  <p>Medicação Usada: {medicationText}</p>
+                  {log.medicationNotes && <p>Notas sobre Medicação: {log.medicationNotes}</p>}
+                </>
+              );
+            }}
           />
           <Separator className="my-6" />
           <DataSection

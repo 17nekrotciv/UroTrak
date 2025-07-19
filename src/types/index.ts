@@ -5,6 +5,7 @@ export interface UserProfile {
   uid: string;
   email: string | null;
   displayName?: string | null;
+  photoURL?: string | null;
 }
 
 export interface UrinaryLogEntry {
@@ -12,6 +13,7 @@ export interface UrinaryLogEntry {
   date: string; // ISO string or Firestore Timestamp
   urgency: boolean;
   burning: boolean;
+  physiotherapyExercise: boolean;
   lossGrams: number | null;
   padChanges: number | null;
 }
@@ -20,7 +22,7 @@ export interface ErectileLogEntry {
   id?: string;
   date: string; // ISO string or Firestore Timestamp
   erectionQuality: string; // Could be a scale like 'None', 'Partial', 'Full'
-  medicationUsed: 'none' | 'tadalafil5' | 'tadalafil20' | 'sildenafil';
+  medicationUsed?: string[]
   medicationNotes?: string; // Optional notes about medication effectiveness
 }
 

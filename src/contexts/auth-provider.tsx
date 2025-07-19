@@ -29,6 +29,7 @@ const manageUserInFirestore = async (firebaseUser: FirebaseUser) => {
       await setDoc(userDocRef, {
         displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário Anônimo',
         email: firebaseUser.email,
+        photoURL: firebaseUser.photoURL,
         createdAt: Timestamp.fromDate(new Date()),
         providerId: firebaseUser.providerData[0]?.providerId || 'email',
       });
@@ -51,11 +52,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         // When a user logs in, ensure their profile exists in our "urotrak database" (Firestore)
         await manageUserInFirestore(firebaseUser);
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-        });
+        
+        // Also get the potentially updated profile from Firestore
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const dbUser = userDocSnap.data();
+           setUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: dbUser.displayName || firebaseUser.displayName,
+              photoURL: dbUser.photoURL || firebaseUser.photoURL,
+           });
+        } else {
+           setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+          });
+        }
+
       } else {
         setUser(null);
       }
