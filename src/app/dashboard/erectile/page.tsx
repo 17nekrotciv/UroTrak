@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 import PageHeader from '@/components/ui/PageHeader';
 import { DatePickerField } from '@/components/forms/FormParts';
 import { useData } from '@/contexts/data-provider';
@@ -26,7 +27,7 @@ import { useRouter } from 'next/navigation';
 const singleErectileEntrySchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Data inválida." }),
   erectionQuality: z.string().min(1, { message: "Qualidade da ereção é obrigatória." }),
-  medicationUsed: z.array(z.string()).optional(), 
+  medicationUsed: z.array(z.string()).optional(),
   medicationNotes: z.string().optional(),
 });
 
@@ -46,21 +47,21 @@ const erectionQualityOptions = [
 ];
 
 const medicationOptions = [
-    { id: 'tadalafil5', label: 'Tadalafila (Cialis) 5mg' },
-    { id: 'tadalafil20', label: 'Tadalafila (Cialis) 20mg' },
-    { id: 'sildenafil', label: 'Sildenafila (Viagra) 50mg' },
+  { id: 'tadalafil5', label: 'Tadalafila (Cialis) 5mg' },
+  { id: 'tadalafil20', label: 'Tadalafila (Cialis) 20mg' },
+  { id: 'sildenafil', label: 'Sildenafila (Viagra) 50mg' },
 ];
 
 const getDefaultErectileEntry = (): SingleErectileEntryInput => ({
   date: new Date().toISOString(),
   erectionQuality: '',
-  medicationUsed: [], 
+  medicationUsed: [],
   medicationNotes: '',
 });
 
 export default function ErectilePage() {
   const { user } = useAuth();
-  const { appData, addErectileLog, updateErectileLog, loadingData } = useData();
+  const { appData, addErectileLog, updateErectileLog, deleteErectileLog, loadingData } = useData();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingLogId, setEditingLogId] = useState<string | null>(null);
@@ -79,29 +80,50 @@ export default function ErectilePage() {
     control,
     name: "entries",
   });
-  
+
   const watchedDate = useWatch({
     control,
     name: `entries.0.date`,
   });
 
+  const handleDeleteClick = async (log: ErectileLogEntry) => {
+    if (!log || !log.id) return;
+
+    try {
+      await deleteErectileLog(log.id);
+      toast({
+        title: "✅ Registro Deletado",
+        description: "O registro foi deletado com sucesso.",
+      });
+      if (editingLogId === log.id) {
+        handleCancelEdit();
+      }
+    } catch (error: any) {
+      toast({
+        title: "❌ Erro ao Deletar",
+        description: `Ocorreu um erro: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleStartEdit = (log: ErectileLogEntry) => {
     if (!log.id) return;
     setEditingLogId(log.id);
     const entryToEdit = {
-        ...log,
-        date: new Date(log.date).toISOString(),
-        medicationUsed: Array.isArray(log.medicationUsed) ? log.medicationUsed : (typeof log.medicationUsed === 'string' && log.medicationUsed !== 'none' ? [log.medicationUsed] : [])
+      ...log,
+      date: new Date(log.date).toISOString(),
+      medicationUsed: Array.isArray(log.medicationUsed) ? log.medicationUsed : (typeof log.medicationUsed === 'string' && log.medicationUsed !== 'none' ? [log.medicationUsed] : [])
     };
     reset({ entries: [entryToEdit] });
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
-    toast({ title: "Modo de Edição", description: `Você está editando o registro do dia ${format(new Date(log.date), "dd/MM/yyyy")}.`});
+    toast({ title: "Modo de Edição", description: `Você está editando o registro do dia ${format(new Date(log.date), "dd/MM/yyyy")}.` });
   };
 
   const handleCancelEdit = () => {
     setEditingLogId(null);
     reset({ entries: [getDefaultErectileEntry()] });
-    toast({ title: "Edição Cancelada", description: "O formulário foi restaurado para adicionar um novo registro."});
+    toast({ title: "Edição Cancelada", description: "O formulário foi restaurado para adicionar um novo registro." });
   };
 
   const onSubmit: SubmitHandler<ErectileFormInputs> = async (data) => {
@@ -114,60 +136,60 @@ export default function ErectilePage() {
     const entryData = data.entries[0];
 
     try {
-        if (editingLogId) {
-            // Lógica de atualização
-            await updateErectileLog(editingLogId, {
-                ...entryData,
-                date: new Date(entryData.date),
-                medicationUsed: entryData.medicationUsed ?? [],
-            });
-            toast({ title: "Sucesso", description: "O registro foi atualizado com sucesso." });
-            setEditingLogId(null);
-            reset({ entries: [getDefaultErectileEntry()] });
-        } else {
-            // Lógica de criação
-            const existingEntry = appData.erectileLogs.find(log => 
-                isSameDay(parseISO(log.date), new Date(entryData.date))
-            );
+      if (editingLogId) {
+        // Lógica de atualização
+        await updateErectileLog(editingLogId, {
+          ...entryData,
+          date: new Date(entryData.date),
+          medicationUsed: entryData.medicationUsed ?? [],
+        });
+        toast({ title: "Sucesso", description: "O registro foi atualizado com sucesso." });
+        setEditingLogId(null);
+        reset({ entries: [getDefaultErectileEntry()] });
+      } else {
+        // Lógica de criação
+        const existingEntry = appData.erectileLogs.find(log =>
+          isSameDay(parseISO(log.date), new Date(entryData.date))
+        );
 
-            if (existingEntry) {
-                toast({
-                    title: "Registro Duplicado",
-                    description: "Já existe um registro para esta data. Deseja editá-lo?",
-                    variant: "destructive",
-                    action: <ToastAction altText="Editar" onClick={() => handleStartEdit(existingEntry)}>Editar</ToastAction>,
-                });
-                setIsSubmitting(false);
-                return;
-            }
-
-            await addErectileLog({
-                ...entryData,
-                date: new Date(entryData.date),
-                medicationUsed: entryData.medicationUsed ?? [],
-            });
-            toast({ title: "Sucesso", description: "Novo registro salvo com sucesso." });
-            reset({ entries: [getDefaultErectileEntry()] });
-            setTimeout(() => router.push('/dashboard/success'), 100);
+        if (existingEntry) {
+          toast({
+            title: "Registro Duplicado",
+            description: "Já existe um registro para esta data. Deseja editá-lo?",
+            variant: "destructive",
+            action: <ToastAction altText="Editar" onClick={() => handleStartEdit(existingEntry)}>Editar</ToastAction>,
+          });
+          setIsSubmitting(false);
+          return;
         }
+
+        await addErectileLog({
+          ...entryData,
+          date: new Date(entryData.date),
+          medicationUsed: entryData.medicationUsed ?? [],
+        });
+        toast({ title: "Sucesso", description: "Novo registro salvo com sucesso." });
+        reset({ entries: [getDefaultErectileEntry()] });
+        setTimeout(() => router.push('/dashboard/success'), 100);
+      }
     } catch (error: any) {
-        console.error("Falha ao salvar registro:", error);
-        let description = "Ocorreu um erro desconhecido ao salvar.";
-        if (error.code === 'permission-denied') {
-            description = "Permissão negada. Verifique suas regras de segurança do Firestore.";
-        } else {
-            description = `Detalhe do erro: ${error.message}`;
-        }
-        toast({ title: "Erro ao Salvar", description, variant: "destructive" });
+      console.error("Falha ao salvar registro:", error);
+      let description = "Ocorreu um erro desconhecido ao salvar.";
+      if (error.code === 'permission-denied') {
+        description = "Permissão negada. Verifique suas regras de segurança do Firestore.";
+      } else {
+        description = `Detalhe do erro: ${error.message}`;
+      }
+      toast({ title: "Erro ao Salvar", description, variant: "destructive" });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
-  
+
   return (
     <>
       <PageHeader title="Função Erétil" description="Registre ou edite informações sobre sua função erétil." icon={HeartPulse} />
-      
+
       <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {fields.slice(0, 1).map((field, index) => (
           <Card key={field.id} className="mb-6 shadow-md p-4 relative">
@@ -181,16 +203,16 @@ export default function ErectilePage() {
               <div className="space-y-2">
                 <Label>Data do Registro</Label>
                 {editingLogId ? (
-                    <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
-                        {watchedDate ? format(new Date(watchedDate), 'dd/MM/yyyy') : 'N/A'}
-                    </div>
+                  <div className="flex h-10 w-full items-center rounded-md border border-input bg-muted px-3 py-2 text-sm text-muted-foreground">
+                    {watchedDate ? format(new Date(watchedDate), 'dd/MM/yyyy') : 'N/A'}
+                  </div>
                 ) : (
-                    <DatePickerField 
-                      control={control} 
-                      name={`entries.${index}.date`} 
-                      label="" // Label já está acima
-                      error={errors.entries?.[index]?.date?.message} 
-                    />
+                  <DatePickerField
+                    control={control}
+                    name={`entries.${index}.date`}
+                    label="" // Label já está acima
+                    error={errors.entries?.[index]?.date?.message}
+                  />
                 )}
               </div>
 
@@ -200,8 +222,8 @@ export default function ErectilePage() {
                   name={`entries.${index}.erectionQuality`}
                   control={control}
                   render={({ field: controllerField }) => (
-                    <Select 
-                      onValueChange={controllerField.onChange} 
+                    <Select
+                      onValueChange={controllerField.onChange}
                       value={controllerField.value}
                     >
                       <SelectTrigger id={`entries.${index}.erectionQuality`} className={errors.entries?.[index]?.erectionQuality ? "border-destructive" : ""}>
@@ -225,27 +247,27 @@ export default function ErectilePage() {
                   control={control}
                   render={({ field }) => (
                     <div className="flex flex-col space-y-2">
-                       <div className="flex items-center space-x-3">
-                         <Checkbox
-                           id={`med_none_${index}`}
-                           checked={!field.value || field.value.length === 0}
-                           onCheckedChange={(checked) => {
-                             if (checked) {
-                               field.onChange([]);
-                             }
-                           }}
-                         />
-                         <Label htmlFor={`med_none_${index}`} className="font-normal">
-                           Não usei medicação
-                         </Label>
-                       </div>
-                       <div className="relative py-2">
-                          <div className="absolute inset-0 flex items-center">
-                              <span className="w-full border-t" />
-                          </div>
-                          <div className="relative flex justify-center text-xs uppercase">
-                              <span className="bg-card px-2 text-muted-foreground">Ou</span>
-                          </div>
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id={`med_none_${index}`}
+                          checked={!field.value || field.value.length === 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange([]);
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`med_none_${index}`} className="font-normal">
+                          Não usei medicação
+                        </Label>
+                      </div>
+                      <div className="relative py-2">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-card px-2 text-muted-foreground">Ou</span>
+                        </div>
                       </div>
                       {medicationOptions.map((option) => (
                         <div key={option.id} className="flex items-center space-x-3">
@@ -273,10 +295,10 @@ export default function ErectilePage() {
 
               <div className="space-y-2">
                 <Label htmlFor={`entries.${index}.medicationNotes`}>Notas sobre a medicação (opcional)</Label>
-                <Textarea 
-                  id={`entries.${index}.medicationNotes`} 
-                  placeholder="Ex: Efeito, duração, etc." 
-                  {...register(`entries.${index}.medicationNotes`)} 
+                <Textarea
+                  id={`entries.${index}.medicationNotes`}
+                  placeholder="Ex: Efeito, duração, etc."
+                  {...register(`entries.${index}.medicationNotes`)}
                 />
               </div>
             </CardContent>
@@ -290,8 +312,8 @@ export default function ErectilePage() {
           </Button>
           {editingLogId && (
             <Button type="button" variant="outline" onClick={handleCancelEdit} className="w-full sm:w-auto">
-                <XCircle className="mr-2 h-4 w-4" />
-                Cancelar Edição
+              <XCircle className="mr-2 h-4 w-4" />
+              Cancelar Edição
             </Button>
           )}
         </div>
@@ -314,37 +336,55 @@ export default function ErectilePage() {
                 {appData.erectileLogs.map((log) => (
                   <li key={log.id} className="p-3 bg-secondary/30 rounded-md text-sm flex justify-between items-start">
                     <div>
-                        <p className="font-semibold">{format(new Date(log.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-                        <p>Qualidade: {erectionQualityOptions.find(opt => opt.value === log.erectionQuality)?.label || log.erectionQuality}</p>
-                        <p>Medicação: 
-                          {(() => {
-                            const medUsed = log.medicationUsed as any;
-                            
-                            if (Array.isArray(medUsed)) {
-                              if (medUsed.length > 0) {
-                                return medUsed
-                                  .map((medId: string) => medicationOptions.find(opt => opt.id === medId)?.label)
-                                  .join(', ');
-                              }
-                            } else if (typeof medUsed === 'string' && medUsed !== 'none') {
-                              return medicationOptions.find(opt => opt.id === medUsed)?.label || 'Nenhuma';
+                      <p className="font-semibold">{format(new Date(log.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                      <p>Qualidade: {erectionQualityOptions.find(opt => opt.value === log.erectionQuality)?.label || log.erectionQuality}</p>
+                      <p>Medicação:
+                        {(() => {
+                          const medUsed = log.medicationUsed as any;
+
+                          if (Array.isArray(medUsed)) {
+                            if (medUsed.length > 0) {
+                              return medUsed
+                                .map((medId: string) => medicationOptions.find(opt => opt.id === medId)?.label)
+                                .join(', ');
                             }
-                            return 'Nenhuma';
-                          })()}
-                        </p>
-                        {log.medicationNotes && <p>Notas: {log.medicationNotes}</p>}
+                          } else if (typeof medUsed === 'string' && medUsed !== 'none') {
+                            return medicationOptions.find(opt => opt.id === medUsed)?.label || 'Nenhuma';
+                          }
+                          return 'Nenhuma';
+                        })()}
+                      </p>
+                      {log.medicationNotes && <p>Notas: {log.medicationNotes}</p>}
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleStartEdit(log)}>
+                    <div className='flex items-center gap-1'>
+                      <Button variant="ghost" size="sm" onClick={() => handleStartEdit(log)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Editar
-                    </Button>
+                      </Button>
+                      <ConfirmationDialog
+                        title="Você tem certeza?"
+                        description={`Esta ação excluirá permanentemente o registro do dia ${format(new Date(log.date), 'dd/MM/yyyy')}.`}
+                        onConfirm={() => handleDeleteClick(log)}
+                        confirmText="Deletar"
+                      >
+                        {/* O que vai aqui dentro é o botão que abre o diálogo */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Deletar</span>
+                        </Button>
+                      </ConfirmationDialog>
+                    </div>
                   </li>
                 ))}
               </ul>
             </ScrollArea>
           )}
         </CardContent>
-      </Card>
+      </Card >
     </>
   );
 }

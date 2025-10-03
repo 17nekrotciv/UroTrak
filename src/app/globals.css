@@ -7,42 +7,81 @@
 
 @layer base {
   :root {
-    --background: 48 100% 97%; /* Very pale yellow, almost cream */
-    --foreground: 218 50% 25%; /* Navy */
+    --background: 220 30% 97%; /* Very pale yellow, almost cream */
+    --foreground: 215 25% 30%; /* Navy */
     
     --card: 0 0% 100%;         /* White cards */
-    --card-foreground: 218 50% 25%; /* Navy */
+    --card-foreground: 215 25% 30%; /* Navy */
     
     --popover: 0 0% 100%;
-    --popover-foreground: 218 50% 25%; /* Navy */
+    --popover-foreground: 215 25% 30%; /* Navy */
     
-    --primary: 37 88% 58%;   /* Light orange */
+    --primary: 210 70% 55%;
     --primary-foreground: 0 0% 100%; /* White text on primary */
     
-    --secondary: 199 41% 45%;  /* Teal blue */
-    --secondary-foreground: 0 0% 100%; /* White text on secondary */
+    --secondary: 210 70% 90%;
+    --secondary-foreground: 210 70% 45%;/* White text on secondary */
     
-    --muted: 48 100% 92%;     /* Lighter pale yellow */
-    --muted-foreground: 218 30% 50%; /* Muted navy/grey */
+    --muted: 220 25% 92%;
+    --muted-foreground: 215 20% 55%; /* Muted navy/grey */
     
-    --accent: 48 95% 60%;     /* Bright yellow */
-    --accent-foreground: 218 50% 20%; /* Darker navy for contrast on yellow */
+    --accent: 210 70% 65%;
+    --accent-foreground: 0 0% 100%; /* Darker navy for contrast on yellow */
     
-    --destructive: 0 84% 60%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 218 30% 85%;     /* Light navy-gray border */
-    --input: 0 0% 100%;         /* White input background */
-    --ring: 37 88% 58%;       /* Primary color for focus rings */
+    --border: 210 30% 88%;
+    --input: 0 0% 100%;
+    --ring: 210 70% 55%;      /* Primary color for focus rings */
 
-    --chart-1: 48 95% 60%;  /* Yellow */
-    --chart-2: 37 88% 58%;  /* Light Orange */
-    --chart-3: 28 70% 50%;  /* Deep Orange */
-    --chart-4: 199 41% 45%; /* Teal Blue */
-    --chart-5: 218 79% 19%; /* Navy Blue (from image) */
+    --chart-1: 210 70% 55%;
+    --chart-2: 210 70% 55%;
+    --chart-3: 210 60% 65%;
+    --chart-4: 210 60% 65%;
+    --chart-5: 210 60% 65%;
     --radius: 0.5rem;
   }
 
+  /*
+  :root {
+    --background: 48 100% 97%; /* Very pale yellow, almost cream */
+    /*--foreground: 218 50% 25%;  Navy */
+    
+    /*card: 0 0% 100%;          White cards */
+    /*card-foreground: 218 50% 25%;  Navy */
+    
+    /*popover: 0 0% 100%;
+    /*popover-foreground: 218 50% 25%;  Navy */
+    
+    /*primary: 37 88% 58%;    Light orange */
+    /*primary-foreground: 0 0% 100%;  White text on primary */
+    
+    /*secondary: 199 41% 45%;   Teal blue */
+    /*secondary-foreground: 0 0% 100%;  White text on secondary */
+    
+    /*muted: 48 100% 92%;      Lighter pale yellow */
+    /*muted-foreground: 218 30% 50%;  Muted navy/grey */
+    
+    /*accent: 48 95% 60%;      Bright yellow */
+    /*accent-foreground: 218 50% 20%;  Darker navy for contrast on yellow */
+    
+    /*destructive: 0 84% 60%;
+    /*destructive-foreground: 0 0% 98%;
+    
+    /*border: 218 30% 85%;      Light navy-gray border */
+    /*input: 0 0% 100%;          White input background */
+    /*ring: 37 88% 58%;        Primary color for focus rings */
+
+    /*chart-1: 48 95% 60%;   Yellow */
+    /*chart-2: 37 88% 58%;   Light Orange */
+    /*chart-3: 28 70% 50%;   Deep Orange */
+    /*chart-4: 199 41% 45%;  Teal Blue */
+    /*chart-5: 218 79% 19%;  Navy Blue (from image) */
+    /*radius: 0.5rem;
+  */
+
+  
   .dark {
     --background: 218 30% 12%; /* Very dark, slightly desaturated navy */
     --foreground: 48 80% 85%;  /* Pale, soft yellow for text */

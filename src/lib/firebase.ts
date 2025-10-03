@@ -6,6 +6,7 @@ import {
   FacebookAuthProvider,
   OAuthProvider
 } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { initializeFirestore, persistentLocalCache, doc, getDoc, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
@@ -22,7 +23,7 @@ const auth = getAuth(app);
 
 try {
   initializeFirestore(app, {
-      localCache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
+    localCache: persistentLocalCache({ /* Configurações de cache podem ser adicionadas aqui, se necessário */ })
   });
 } catch (error) {
   // Isso evita erros em ambientes de desenvolvimento onde o código pode rodar mais de uma vez.
@@ -30,6 +31,7 @@ try {
 }
 
 const db = getFirestore(app, 'uritrak');
+const storage = getStorage(app);
 
 // Provedores de Autenticação
 const googleProvider = new GoogleAuthProvider();
@@ -41,6 +43,7 @@ export {
   app,
   auth,
   db,
+  storage,
   googleProvider,
   facebookProvider,
   appleProvider,
@@ -61,7 +64,7 @@ export async function testFirebaseConnection(): Promise<{ success: boolean; mess
     if (error.code === 'permission-denied') {
       message += 'Causa provável: Permissão negada. As Regras de Segurança do Firestore não foram atualizadas corretamente no Console do Firebase. Copie o conteúdo de `firestore.rules` e cole no seu projeto.';
     } else if (error.code === 'unavailable' || (error.message && error.message.toLowerCase().includes('offline'))) {
-       message += `Causa provável: O cliente está offline. Isso geralmente significa que as credenciais no seu arquivo \`.env.local\` (API Key, Project ID, etc.) estão incorretas ou ausentes. Verifique o arquivo e reinicie o servidor.`;
+      message += `Causa provável: O cliente está offline. Isso geralmente significa que as credenciais no seu arquivo \`.env.local\` (API Key, Project ID, etc.) estão incorretas ou ausentes. Verifique o arquivo e reinicie o servidor.`;
     } else {
       message += `Erro inesperado: ${error.message} (código: ${error.code || 'N/A'})`;
     }

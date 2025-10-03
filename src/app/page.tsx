@@ -13,7 +13,12 @@ export default function HomePage() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace('/dashboard');
+        if (user.role == "user") {
+          router.replace('/dashboard');
+        }
+        else if (user.role == "doctor") {
+          router.replace('/doctor-dashboard');
+        }
       } else {
         router.replace('/login');
       }

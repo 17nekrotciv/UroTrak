@@ -7,8 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, signInWithPopup, type AuthProvider as FirebaseAuthProvider } from 'firebase/auth';
-import { auth, googleProvider, testFirebaseConnection } from '@/lib/firebase';
+import { signInWithEmailAndPassword, signInWithPopup, User, type AuthProvider as FirebaseAuthProvider } from 'firebase/auth';
+import { auth, googleProvider, facebookProvider, microsoftProvider, appleProvider, testFirebaseConnection, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,9 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import { Loader2, LogIn, HelpCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { FcGoogle } from 'react-icons/fc';
+import { FaFacebook, FaApple, FaMicrosoft } from "react-icons/fa";
+import { doc, getDoc, getFirestore } from 'firebase/firestore';
+import { ESLINT_DEFAULT_DIRS } from 'next/dist/lib/constants';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email inválido." }),
@@ -35,10 +38,6 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onLoginSuccess = () => {
-    toast({ title: "Login bem-sucedido!", description: "Redirecionando para o painel..." });
-    router.push('/dashboard');
-  };
 
   const onLoginError = (error: any, providerName?: string) => {
     console.error(`${providerName || 'Email/Password'} Login error:`, error);
@@ -70,9 +69,9 @@ export default function LoginPage() {
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      await handleLoginSuccess(userCredential.user);
       // The logic to handle user data in Firestore is now centralized in AuthProvider.
-      onLoginSuccess();
     } catch (error: any) {
       onLoginError(error);
     } finally {
@@ -80,37 +79,70 @@ export default function LoginPage() {
     }
   };
 
+  const handleLoginSuccess = async (user: User) => {
+    if (!user) {
+      onLoginError({ code: 'auth/no-user-provided' });
+      return;
+    }
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap) {
+        const userData = userDocSnap.data()
+        const userRole = userData ? userData.role : ""
+        if (userRole == "user") {
+          router.push('/dashboard/urinary')
+        }
+        else if (userRole == "doctor") {
+          router.push('/dashboard/psa')
+        }
+        else {
+          router.push('/dashboard');
+        }
+
+        toast({ title: "Login bem-sucedido!", description: "Redirecionando para o painel..." });
+      } else {
+        // Erro: Usuário autenticado, mas sem perfil no Firestore.
+        // Isso pode acontecer se o cadastro não criar o documento corretamente.
+        console.error("Documento do usuário não encontrado no Firestore:", user.uid);
+        toast({
+          title: "Erro de Perfil",
+          description: "Não foi possível encontrar os dados do seu perfil. Por favor, entre em contato com o suporte.",
+          variant: "destructive"
+        });
+        // Opcional: Deslogar o usuário para evitar que ele fique em um estado "preso"
+        await auth.signOut();
+      }
+    }
+    catch (error) {
+      console.error("Erro ao buscar dados do usuário no Firestore:", error);
+      onLoginError({ code: 'firestore/fetch-error' }, 'Firestore');
+    }
+  }
+
   const handleSocialLogin = async (provider: FirebaseAuthProvider, providerName: string) => {
     setSocialLoading(providerName);
     try {
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      await handleLoginSuccess(userCredential.user);
       // The logic to handle user data in Firestore is now centralized in AuthProvider.
-      onLoginSuccess();
     } catch (error: any) {
       onLoginError(error, providerName);
     } finally {
       setSocialLoading(null);
     }
   };
-  
-  const handleTestConnection = async () => {
-    setIsTestingConnection(true);
-    const result = await testFirebaseConnection();
-    toast({
-        title: result.success ? "Teste de Conexão" : "Falha no Teste de Conexão",
-        description: result.message,
-        variant: result.success ? "default" : "destructive",
-        duration: 9000,
-    });
-    setIsTestingConnection(false);
-  };
 
   const socialProviders = [
     { name: "Google", provider: googleProvider, icon: FcGoogle, disabled: false },
+    { name: "Microsoft", provider: microsoftProvider, icon: FaMicrosoft, disabled: true },
+    { name: "Facebook", provider: facebookProvider, icon: FaFacebook, disabled: true },
+    { name: "Apple", provider: appleProvider, icon: FaApple, disabled: true }
   ];
 
   return (
-    <AuthLayout title="Login UroTrack">
+    <AuthLayout title="Bem-vindo ao UroTrack">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -142,19 +174,8 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <Button 
-        type="button"
-        variant="outline"
-        className="w-full font-semibold mt-4 border-dashed"
-        onClick={handleTestConnection}
-        disabled={loading || !!socialLoading || isTestingConnection}
-      >
-        {isTestingConnection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HelpCircle className="mr-2 h-4 w-4" />}
-        Testar Conexão com Firebase
-      </Button>
-
       <Separator className="my-6" />
-      
+
       <div className="space-y-3">
         <p className="text-center text-sm text-muted-foreground">Ou continue com</p>
         {socialProviders.map(sp => (
@@ -175,7 +196,7 @@ export default function LoginPage() {
           </Button>
         ))}
       </div>
-      
+
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Não tem uma conta?{' '}
         <Link href="/signup" className="font-medium text-primary hover:underline">

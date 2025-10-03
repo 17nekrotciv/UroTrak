@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 interface ChartDataPoint {
   date: string; // ISO string date
   [key: string]: any; // Value for the Y-axis
+  medicationNotes?: string
 }
 
 interface GenericLineChartProps {
@@ -35,6 +36,32 @@ const formatDateTick = (tickItem: string) => {
   } catch (e) {
     return tickItem; // Fallback if date is not parsable
   }
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const dataPoint = payload[0].payload; // Objeto de dados completo: { date, 'Perda (g)', 'Observação' }
+    const value = payload[0].value;
+    const name = payload[0].name;
+
+    return (
+      <div className="p-3 max-w-xs rounded-md border bg-card text-card-foreground shadow-sm">
+        <p className="font-semibold mb-1">{format(parseISO(label), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
+        <p className="text-sm">{`${name}: ${value}`}</p>
+
+        {/* ✨ Exibe a observação apenas se ela existir ✨ */}
+        {dataPoint['Observação'] && (
+          <div className="mt-2 border-t pt-2">
+            <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+              {dataPoint['Observação']}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 };
 
 export default function GenericLineChart({
@@ -66,25 +93,18 @@ export default function GenericLineChart({
           }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis 
-            dataKey={xAxisKey} 
-            tickFormatter={formatDateTick} 
+          <XAxis
+            dataKey={xAxisKey}
+            tickFormatter={formatDateTick}
             stroke="hsl(var(--muted-foreground))"
             tick={{ fontSize: 12 }}
           />
-          <YAxis 
+          <YAxis
             stroke="hsl(var(--muted-foreground))"
             label={yAxisLabel ? { value: yAxisLabel, angle: -90, position: 'insideLeft', fill: 'hsl(var(--muted-foreground))', fontSize: 12 } : undefined}
             tick={{ fontSize: 12 }}
           />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              borderColor: 'hsl(var(--border))',
-              borderRadius: 'var(--radius)',
-            }}
-            labelFormatter={(label) => format(parseISO(label), "dd/MM/yyyy", { locale: ptBR })}
-          />
+          <Tooltip cursor={{ fill: 'transparent' }} content={<CustomTooltip />} />
           <Legend wrapperStyle={{ fontSize: '12px' }} />
           <Line
             type="monotone"
@@ -92,7 +112,7 @@ export default function GenericLineChart({
             stroke={lineColor}
             strokeWidth={2}
             activeDot={{ r: 6 }}
-            dot={{ r:3, fill: lineColor }}
+            dot={{ r: 3, fill: lineColor }}
             name={yAxisLabel || yAxisKey}
           />
         </LineChart>

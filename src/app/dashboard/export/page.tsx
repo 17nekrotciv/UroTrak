@@ -166,7 +166,7 @@ export default function ExportPage() {
             const addFooter = () => {
                 const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
                 const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
-                doc.setFillColor("#485c6c");
+                doc.setFillColor("#2A2F3A");
                 const footerHeight = 30;
                 const leftMargin = 0;
                 const footerWidth = pageWidth - (leftMargin * 2);
@@ -182,7 +182,7 @@ export default function ExportPage() {
                 doc.textWithLink('clinicauroonco.com.br', pageWidth - 14, pageHeight - 20, { url: 'https://clinicauroonco.com.br', align: 'right' });
                 doc.textWithLink('Agendamentos', pageWidth - 14, pageHeight - 16, { url: 'http://bit.ly/2WMMiCI', align: 'right' });
                 //doc.line(14, pageHeight - 30, pageWidth - 14, pageHeight - 30);
-                doc.setTextColor(100);
+                doc.setTextColor("#FFFFFF");
                 doc.text("Clinica Uro Onco | R. Borges Lagoa 1070, Cj 52, Vila Mariana - São Paulo - SP", 14, pageHeight - 20);
                 doc.text("Dr. Bruno Benigno | Uro-oncologista | CRM SP 126265 | RQE 60022", 14, pageHeight - 16);
                 doc.text("Contato: (11) 2769-3929 | ", 14, pageHeight - 12);

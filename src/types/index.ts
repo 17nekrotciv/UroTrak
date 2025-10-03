@@ -1,11 +1,39 @@
 // src/types/index.ts
 import type { User as FirebaseUser } from 'firebase/auth';
 
+export interface Address {
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+}
+
 export interface UserProfile {
   uid: string;
   email: string | null;
   displayName?: string | null;
   photoURL?: string | null;
+  role: string;
+  clinicId: string
+  clinic?: Clinic;
+  cpf?: string;
+  crm?: string;
+  especializacao?: string;
+  rqe?: string;
+  phone?: string;
+  birthDate?: string;
+  gender?: 'Masculino' | 'Feminino'
+  address?: Address;
+}
+
+export interface Clinic {
+  createdAt: string,
+  name: string,
+  ownerId: string,
+  logoUrl?: string
 }
 
 export interface UrinaryLogEntry {
@@ -16,6 +44,7 @@ export interface UrinaryLogEntry {
   physiotherapyExercise: boolean;
   lossGrams: number | null;
   padChanges: number | null;
+  medicationNotes?: string;
 }
 
 export interface ErectileLogEntry {

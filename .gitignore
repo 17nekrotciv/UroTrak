@@ -5,6 +5,9 @@
 /.pnp
 .pnp.js
 
+# Firebase / Google Cloud credentials
+*-firebase-adminsdk-*.json
+
 # testing
 /coverage
 
