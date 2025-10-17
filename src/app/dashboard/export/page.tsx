@@ -18,7 +18,7 @@ declare global {
 }
 
 export default function ExportPage() {
-    const { appData, loadingData } = useData();
+    const { appData, loadingData, userProfile } = useData();
     const { toast } = useToast();
     const [isDownloadingJson, setIsDownloadingJson] = useState(false);
     const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -133,10 +133,16 @@ export default function ExportPage() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            const logoDataUrl = await getImageDataUrl('https://static.wixstatic.com/media/5c67c0_f5b3f54cdd584c12b1e2207e44cfd15b~mv2.png').catch(() => {
-                toast({ title: "Aviso", description: "Não foi possível carregar o logótipo para o PDF.", variant: "default" });
-                return null;
-            });
+            const logoUrl = userProfile?.clinic?.logoUrl;
+            let logoDataUrl = null; // Inicia como nulo
+
+            // Se a logoUrl existir, tenta convertê-la para base64
+            if (logoUrl) {
+                logoDataUrl = await getImageDataUrl(logoUrl).catch(() => {
+                    toast({ title: "Aviso", description: "Não foi possível carregar o logótipo da clínica para o PDF.", variant: "default" });
+                    return null; // Retorna nulo em caso de erro
+                });
+            }
 
             let finalY = 45; // Posição inicial do conteúdo
 

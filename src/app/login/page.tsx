@@ -20,6 +20,7 @@ import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook, FaApple, FaMicrosoft } from "react-icons/fa";
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 import { ESLINT_DEFAULT_DIRS } from 'next/dist/lib/constants';
+import { cn } from '@/lib/utils';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email inválido." }),
@@ -92,10 +93,10 @@ export default function LoginPage() {
         const userData = userDocSnap.data()
         const userRole = userData ? userData.role : ""
         if (userRole == "user") {
-          router.push('/dashboard/urinary')
+          router.push('/dashboard')
         }
         else if (userRole == "doctor") {
-          router.push('/dashboard/psa')
+          router.push('/doctor-dashboard')
         }
         else {
           router.push('/dashboard');
@@ -141,6 +142,8 @@ export default function LoginPage() {
     { name: "Apple", provider: appleProvider, icon: FaApple, disabled: true }
   ];
 
+  const isAnyLoading = loading || !!socialLoading || isTestingConnection;
+
   return (
     <AuthLayout title="Bem-vindo ao UroTrack">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -152,7 +155,7 @@ export default function LoginPage() {
             placeholder="seuemail@exemplo.com"
             {...register("email")}
             className={errors.email ? "border-destructive" : ""}
-            disabled={loading || !!socialLoading || isTestingConnection}
+            disabled={isAnyLoading}
           />
           {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
@@ -164,11 +167,11 @@ export default function LoginPage() {
             placeholder="Sua senha"
             {...register("password")}
             className={errors.password ? "border-destructive" : ""}
-            disabled={loading || !!socialLoading || isTestingConnection}
+            disabled={isAnyLoading}
           />
           {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
         </div>
-        <Button type="submit" className="w-full font-semibold" disabled={loading || !!socialLoading || isTestingConnection}>
+        <Button type="submit" className="w-full font-semibold" disabled={isAnyLoading}>
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
           Entrar
         </Button>
@@ -184,7 +187,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={() => handleSocialLogin(sp.provider, sp.name)}
-            disabled={sp.disabled || loading || !!socialLoading || isTestingConnection}
+            disabled={sp.disabled || isAnyLoading}
             aria-label={`Entrar com ${sp.name}`}
           >
             {socialLoading === sp.name ? (
@@ -199,7 +202,15 @@ export default function LoginPage() {
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Não tem uma conta?{' '}
-        <Link href="/signup" className="font-medium text-primary hover:underline">
+        <Link
+          href="/signup"
+          className={cn(
+            "font-medium text-primary hover:underline",
+            isAnyLoading && "pointer-events-none opacity-50"
+          )}
+          aria-disabled={isAnyLoading}
+          tabIndex={isAnyLoading ? -1 : undefined}
+        >
           Cadastre-se
         </Link>
       </p>

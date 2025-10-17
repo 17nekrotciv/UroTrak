@@ -23,7 +23,8 @@ export default function UserExportPage({ params }: { params: Promise<{ userId: s
         viewedUserData,
         loadingViewedUser,
         loadViewedUserData,
-        viewedUserProfile
+        viewedUserProfile,
+        userProfile
     } = useData();
     const resolvedParams = use(params);
     const { userId } = resolvedParams;
@@ -145,10 +146,16 @@ export default function UserExportPage({ params }: { params: Promise<{ userId: s
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            const logoDataUrl = await getImageDataUrl('https://static.wixstatic.com/media/5c67c0_f5b3f54cdd584c12b1e2207e44cfd15b~mv2.png').catch(() => {
-                toast({ title: "Aviso", description: "Não foi possível carregar o logótipo para o PDF.", variant: "default" });
-                return null;
-            });
+            const logoUrl = userProfile?.clinic?.logoUrl;
+            let logoDataUrl = null; // Inicia como nulo
+
+            // Se a logoUrl existir, tenta convertê-la para base64
+            if (logoUrl) {
+                logoDataUrl = await getImageDataUrl(logoUrl).catch(() => {
+                    toast({ title: "Aviso", description: "Não foi possível carregar o logótipo da clínica para o PDF.", variant: "default" });
+                    return null; // Retorna nulo em caso de erro
+                });
+            }
 
             let finalY = 45;
 

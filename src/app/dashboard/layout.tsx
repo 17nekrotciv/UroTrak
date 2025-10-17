@@ -7,11 +7,16 @@ import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/layout/AppHeader';
 import SidebarNavContent from '@/components/layout/SidebarNavContent';
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useData } from '@/contexts/data-provider';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const { userProfile, loadingData } = useData();
   const router = useRouter();
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+
+  const isLoading = loading || loadingData;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -19,8 +24,31 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [user, loading, router]);
 
-  if (loading || !user) {
-    return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+  if (!isLoading && userProfile) {
+    // ... e a role for 'doctor'...
+    if (userProfile.role === 'doctor') {
+      // ...redireciona para o dashboard do médico.
+      console.log("🚫 Acesso negado. Redirecionando médico para /doctor-dashboard.");
+      router.replace('/doctor-dashboard');
+    }
+  }
+
+  if (isLoading || !userProfile) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
+        <p className="text-foreground">Verificando permissões...</p>
+      </div>
+    );
+  }
+
+  if (userProfile.role === 'doctor') {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mr-3" />
+        <p className="text-foreground">Redirecionando para o painel do médico...</p>
+      </div>
+    );
   }
 
   return (

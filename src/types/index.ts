@@ -10,6 +10,13 @@ export interface Address {
   state?: string;
   zipCode?: string;
 }
+export interface Subscription {
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'free';
+  plan: 'free' | 'pro' | 'enterprise'; // Nomes dos seus planos
+  patientLimit: number;
+  stripeCustomerId?: string; // ID do cliente no Stripe
+  subscriptionId?: string; // ID da assinatura no Stripe
+}
 
 export interface UserProfile {
   uid: string;
@@ -27,6 +34,7 @@ export interface UserProfile {
   birthDate?: string;
   gender?: 'Masculino' | 'Feminino'
   address?: Address;
+  subscription?: Subscription
 }
 
 export interface Clinic {

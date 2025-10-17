@@ -6,13 +6,18 @@
  *
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
+import * as admin from "firebase-admin";
 
-import {setGlobalOptions} from "firebase-functions";
+
+admin.initializeApp();
+
+
+import { setGlobalOptions } from "firebase-functions";
 // import { onRequest } from "firebase-functions/https";
 // import * as logger from "firebase-functions/logger";
-import {onClinicCreateSetDoctorClaims} from "./users/on-create";
-import {createPatientUser} from "./users/create";
-import * as admin from "firebase-admin";
+import { onClinicCreateSetDoctorClaims } from "./modules/users/on-create";
+export * from "./modules/users/controllers";
+export * from "./modules/subscriptions/controllers";
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
 
@@ -26,11 +31,9 @@ import * as admin from "firebase-admin";
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-admin.initializeApp();
-export {onClinicCreateSetDoctorClaims};
-export {createPatientUser};
+export { onClinicCreateSetDoctorClaims };
 
-setGlobalOptions({maxInstances: 10});
+setGlobalOptions({ maxInstances: 10 });
 
 // export const helloWorld = onRequest((request, response) => {
 //   logger.info("Hello logs!", {structuredData: true});

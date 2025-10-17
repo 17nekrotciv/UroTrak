@@ -58,7 +58,7 @@ export default function DataSummaryPage() {
   };
 
   const medicationMap: { [key: string]: string } = {
-    'none':'Nenhuma',
+    'none': 'Nenhuma',
     'tadalafil5': 'Tadalafila (Cialis) 5mg',
     'tadalafil20': 'Tadalafila (Cialis) 20mg',
     'sildenafil': 'Sildenafila (Viagra) 50mg'
@@ -67,9 +67,9 @@ export default function DataSummaryPage() {
 
   return (
     <>
-      <PageHeader 
-        title="Resumo de Dados Registrados" 
-        description="Visualize todos os seus dados de acompanhamento em um só lugar." 
+      <PageHeader
+        title="Resumo de Dados Registrados"
+        description="Visualize todos os seus dados de acompanhamento em um só lugar."
         icon={BarChart3}
       >
         <Button onClick={handlePrint} variant="outline">
@@ -103,10 +103,10 @@ export default function DataSummaryPage() {
               let medicationText = 'Nenhuma';
               if (Array.isArray(log.medicationUsed) && log.medicationUsed.length > 0) {
                 medicationText = log.medicationUsed
-                    .map((medId: string) => medicationMap[medId] || medId)
-                    .join(', ');
+                  .map((medId: string) => medicationMap[medId] || medId)
+                  .join(', ');
               } else if (typeof log.medicationUsed === 'string' && log.medicationUsed !== 'none') {
-                  medicationText = medicationMap[log.medicationUsed] || log.medicationUsed;
+                medicationText = medicationMap[log.medicationUsed] || log.medicationUsed;
               }
 
               return (

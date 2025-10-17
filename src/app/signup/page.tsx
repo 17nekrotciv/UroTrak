@@ -1,3 +1,4 @@
+// src/app/signup/page.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -8,7 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, writeBatch, Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,7 @@ import { Loader2, UserPlus, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { IMaskInput } from 'react-imask';
 import { useCepAutocomplete } from '@/hooks/use-cep-autocomplete';
+import { cn } from '@/lib/utils';
 
 // --- SCHEMAS ATUALIZADOS PARA 3 ETAPAS ---
 const step1Schema = z.object({
@@ -117,14 +119,35 @@ export default function SignupPage() {
   const onSubmit: SubmitHandler<SignupFormInputs> = async (data) => {
     setLoading(true);
     try {
+      // --- VERIFICAÇÃO DE UNICIDADE ---
+      // 1. Verificar se o CPF já existe na coleção 'users'
+      const cpfQuery = query(collection(db, "users"), where("cpf", "==", data.cpf));
+      const cpfQuerySnapshot = await getDocs(cpfQuery);
+      if (!cpfQuerySnapshot.empty) {
+        toast({ title: "Erro no Cadastro", description: "O CPF informado já está cadastrado no sistema.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
+      // 2. Verificar se o CNPJ já existe como ID na coleção 'clinic'
+      const clinicDocRef = doc(db, "clinic", data.clinicCnpj);
+      const clinicDocSnap = await getDocs(query(collection(db, "clinic"), where("__name__", "==", data.clinicCnpj)));
+      if (!clinicDocSnap.empty) {
+        toast({ title: "Erro no Cadastro", description: "O CNPJ da clínica informado já está cadastrado.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      // --- FIM DA VERIFICAÇÃO ---
+
+
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       await updateProfile(user, { displayName: data.displayName });
 
       const batch = writeBatch(db);
 
-      const clinicRef = doc(db, "clinic", data.clinicCnpj);
-      batch.set(clinicRef, {
+      // Usar a referência que já checamos para evitar outra leitura
+      batch.set(clinicDocRef, {
         name: data.clinicName,
         ownerId: user.uid,
         createdAt: Timestamp.now(),
@@ -179,20 +202,20 @@ export default function SignupPage() {
             <h3 className="font-semibold text-center">Informações de Acesso</h3>
             <div className="space-y-2">
               <Label htmlFor="displayName">Nome Completo</Label>
-              <Input id="displayName" {...register("displayName")} />
+              <Input id="displayName" {...register("displayName")} disabled={loading} />
               {errors.displayName && <p className="text-sm text-destructive">{errors.displayName.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Profissional</Label>
-              <Input id="email" type="email" {...register("email")} />
+              <Input id="email" type="email" {...register("email")} disabled={loading} />
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" {...register("password")} />
+              <Input id="password" type="password" {...register("password")} disabled={loading} />
               {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
-            <Button type="button" onClick={handleNextStep} className="w-full font-semibold">
+            <Button type="button" onClick={handleNextStep} className="w-full font-semibold" disabled={loading}>
               Próximo <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </>
@@ -202,28 +225,28 @@ export default function SignupPage() {
           <>
             <h3 className="font-semibold text-center">Dados Pessoais</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Controller name="cpf" control={control} render={({ field }) => (<div><Label>CPF *</Label><IMaskInput mask="000.000.000-00" unmask={true} onAccept={field.onChange} value={field.value || ''} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />{errors.cpf && <p className="text-sm text-destructive">{errors.cpf.message}</p>}</div>)} />
-              <Controller name="phone" control={control} render={({ field }) => (<div><Label>Telefone *</Label><IMaskInput mask="(00) 00000-0000" unmask={true} onAccept={field.onChange} value={field.value || ''} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />{errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}</div>)} />
+              <Controller name="cpf" control={control} render={({ field }) => (<div><Label>CPF *</Label><IMaskInput mask="000.000.000-00" unmask={true} onAccept={field.onChange} value={field.value || ''} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" disabled={loading} />{errors.cpf && <p className="text-sm text-destructive">{errors.cpf.message}</p>}</div>)} />
+              <Controller name="phone" control={control} render={({ field }) => (<div><Label>Telefone *</Label><IMaskInput mask="(00) 00000-0000" unmask={true} onAccept={field.onChange} value={field.value || ''} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" disabled={loading} />{errors.phone && <p className="text-sm text-destructive">{errors.phone.message}</p>}</div>)} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Controller name="birthDate" control={control} render={({ field }) => (<div><Label>Data de Nascimento *</Label><Input type="date" {...field} />{errors.birthDate && <p className="text-sm text-destructive">{errors.birthDate.message}</p>}</div>)} />
-              <Controller name="gender" control={control} render={({ field }) => (<div><Label>Gênero *</Label><Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Feminino">Feminino</SelectItem></SelectContent></Select>{errors.gender && <p className="text-sm text-destructive">{errors.gender.message}</p>}</div>)} />
+              <Controller name="birthDate" control={control} render={({ field }) => (<div><Label>Data de Nascimento *</Label><Input type="date" {...field} disabled={loading} />{errors.birthDate && <p className="text-sm text-destructive">{errors.birthDate.message}</p>}</div>)} />
+              <Controller name="gender" control={control} render={({ field }) => (<div><Label>Gênero *</Label><Select onValueChange={field.onChange} value={field.value} disabled={loading}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent><SelectItem value="Masculino">Masculino</SelectItem><SelectItem value="Feminino">Feminino</SelectItem></SelectContent></Select>{errors.gender && <p className="text-sm text-destructive">{errors.gender.message}</p>}</div>)} />
             </div>
-            <Controller name="cep" control={control} render={({ field }) => (<div><Label>CEP *</Label><div className='relative'><IMaskInput mask="00000-000" unmask={true} onAccept={(v) => { field.onChange(v); handleCepSearch(v) }} value={field.value || ''} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />{isCepLoading && <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin" />}</div>{errors.cep && <p className="text-sm text-destructive">{errors.cep.message}</p>}</div>)} />
-            <Controller name="street" control={control} render={({ field }) => (<div><Label>Rua *</Label><Input {...field} />{errors.street && <p className="text-sm text-destructive">{errors.street.message}</p>}</div>)} />
+            <Controller name="cep" control={control} render={({ field }) => (<div><Label>CEP *</Label><div className='relative'><IMaskInput mask="00000-000" unmask={true} onAccept={(v) => { field.onChange(v); handleCepSearch(v) }} value={field.value || ''} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" disabled={loading || isCepLoading} />{isCepLoading && <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin" />}</div>{errors.cep && <p className="text-sm text-destructive">{errors.cep.message}</p>}</div>)} />
+            <Controller name="street" control={control} render={({ field }) => (<div><Label>Rua *</Label><Input {...field} disabled={loading} />{errors.street && <p className="text-sm text-destructive">{errors.street.message}</p>}</div>)} />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Controller name="number" control={control} render={({ field }) => (<div><Label>Número *</Label><Input {...field} />{errors.number && <p className="text-sm text-destructive">{errors.number.message}</p>}</div>)} />
-              <Controller name="complement" control={control} render={({ field }) => (<div className="md:col-span-2"><Label>Complemento</Label><Input {...field} /></div>)} />
+              <Controller name="number" control={control} render={({ field }) => (<div><Label>Número *</Label><Input {...field} disabled={loading} />{errors.number && <p className="text-sm text-destructive">{errors.number.message}</p>}</div>)} />
+              <Controller name="complement" control={control} render={({ field }) => (<div className="md:col-span-2"><Label>Complemento</Label><Input {...field} disabled={loading} /></div>)} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Controller name="neighborhood" control={control} render={({ field }) => (<div><Label>Bairro *</Label><Input {...field} />{errors.neighborhood && <p className="text-sm text-destructive">{errors.neighborhood.message}</p>}</div>)} />
-              <Controller name="city" control={control} render={({ field }) => (<div><Label>Cidade *</Label><Input {...field} />{errors.city && <p className="text-sm text-destructive">{errors.city.message}</p>}</div>)} />
+              <Controller name="neighborhood" control={control} render={({ field }) => (<div><Label>Bairro *</Label><Input {...field} disabled={loading} />{errors.neighborhood && <p className="text-sm text-destructive">{errors.neighborhood.message}</p>}</div>)} />
+              <Controller name="city" control={control} render={({ field }) => (<div><Label>Cidade *</Label><Input {...field} disabled={loading} />{errors.city && <p className="text-sm text-destructive">{errors.city.message}</p>}</div>)} />
             </div>
-            <Controller name="state" control={control} render={({ field }) => (<div><Label>Estado *</Label><Input {...field} />{errors.state && <p className="text-sm text-destructive">{errors.state.message}</p>}</div>)} />
+            <Controller name="state" control={control} render={({ field }) => (<div><Label>Estado *</Label><Input {...field} disabled={loading} />{errors.state && <p className="text-sm text-destructive">{errors.state.message}</p>}</div>)} />
 
             <div className="flex gap-4">
-              <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-full"><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
-              <Button type="button" onClick={handleNextStep} className="w-full font-semibold">Próximo<ArrowRight className="ml-2 h-4 w-4" /></Button>
+              <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-full" disabled={loading}><ArrowLeft className="mr-2 h-4 w-4" />Voltar</Button>
+              <Button type="button" onClick={handleNextStep} className="w-full font-semibold" disabled={loading}>Próximo<ArrowRight className="ml-2 h-4 w-4" /></Button>
             </div>
           </>
         )}
@@ -233,20 +256,20 @@ export default function SignupPage() {
             <h3 className="font-semibold text-center">Dados Profissionais e da Clínica</h3>
             <div className="space-y-2">
               <Label htmlFor="crm">CRM *</Label>
-              <Input id="crm" {...register("crm")} />
+              <Input id="crm" {...register("crm")} disabled={loading} />
               {errors.crm && <p className="text-sm text-destructive">{errors.crm.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="especializacao">Especialização (Opcional)</Label>
-              <Input id="especializacao" {...register("especializacao")} />
+              <Input id="especializacao" {...register("especializacao")} disabled={loading} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="rqe">RQE (Opcional)</Label>
-              <Input id="rqe" {...register("rqe")} />
+              <Input id="rqe" {...register("rqe")} disabled={loading} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="clinicName">Nome da Clínica *</Label>
-              <Input id="clinicName" {...register("clinicName")} />
+              <Input id="clinicName" {...register("clinicName")} disabled={loading} />
               {errors.clinicName && <p className="text-sm text-destructive">{errors.clinicName.message}</p>}
             </div>
             <div className="space-y-2">
@@ -258,13 +281,14 @@ export default function SignupPage() {
                   onAccept={field.onChange}
                   value={field.value || ''}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  disabled={loading}
                 />
               )} />
               {errors.clinicCnpj && <p className="text-sm text-destructive">{errors.clinicCnpj.message}</p>}
             </div>
 
             <div className="flex gap-4">
-              <Button type="button" variant="outline" onClick={() => setStep(2)} className="w-full">
+              <Button type="button" variant="outline" onClick={() => setStep(2)} className="w-full" disabled={loading}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar
               </Button>
@@ -279,7 +303,15 @@ export default function SignupPage() {
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Já tem uma conta?{' '}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href="/login"
+          className={cn(
+            "font-medium text-primary hover:underline",
+            loading && "pointer-events-none opacity-50"
+          )}
+          aria-disabled={loading}
+          tabIndex={loading ? -1 : undefined}
+        >
           Faça login
         </Link>
       </p>
