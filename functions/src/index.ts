@@ -13,13 +13,19 @@ admin.initializeApp();
 
 
 import { setGlobalOptions } from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 // import { onRequest } from "firebase-functions/https";
 // import * as logger from "firebase-functions/logger";
 import { onClinicCreateSetDoctorClaims } from "./modules/users/on-create";
-export * from "./modules/users/controllers";
-export * from "./modules/subscriptions/controllers";
+import { createPatientUser, completeUserRegistration } from "./modules/users/create"
+import { handleAsaasWebhookRequest, handleCreateSubscription } from "./modules/subscriptions/controllers/subscriptionController";
+import { sendPatientInvite } from "./modules/email/sendInvite";
+//export * from "./modules/users/controllers";
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
+
+setGlobalOptions({ region: "southamerica-east1" });
+
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time. This helps mitigate the impact of unexpected
@@ -32,6 +38,15 @@ export * from "./modules/subscriptions/controllers";
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
 export { onClinicCreateSetDoctorClaims };
+
+export { createPatientUser }
+
+export { completeUserRegistration }
+
+export { sendPatientInvite }
+
+export const createSubscription = functions.https.onCall(handleCreateSubscription);
+export const handleAsaasWebhook = functions.https.onRequest(handleAsaasWebhookRequest);
 
 setGlobalOptions({ maxInstances: 10 });
 

@@ -1,13 +1,15 @@
+// src/app/doctor-dashboard/page.tsx
 "use client";
 
 import React from 'react';
 import PageHeader from '@/components/ui/PageHeader';
-import { Loader2, FileText, Users, UserPlus } from 'lucide-react'; // Ícone UserPlus importado
+import { Loader2, FileText, Users, UserPlus, MailPlus } from 'lucide-react'; // Ícone UserPlus importado
 import { useData } from '@/contexts/data-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { InvitePatientModal } from './invite/page';
 
 const capitalize = (s: string) => {
     if (typeof s !== 'string' || !s) return s;
@@ -25,7 +27,6 @@ export default function UserListPage() {
             </div>
         );
     }
-
     if (userProfile.role !== 'doctor') {
         return (
             <>
@@ -41,7 +42,6 @@ export default function UserListPage() {
             </>
         );
     }
-
     if (loadingClinicUsers) {
         return (
             <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
@@ -58,13 +58,25 @@ export default function UserListPage() {
                 description={`Pacientes associados à clínica: ${userProfile.clinic?.name || 'N/A'}`}
                 icon={Users}
             >
-                {/* Botão "Adicionar Paciente" adicionado aqui */}
-                <Button asChild>
-                    <Link href="/doctor-dashboard/add-user">
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Adicionar Paciente
-                    </Link>
-                </Button>
+                {/* ✅ 3. ADICIONAR OS DOIS BOTÕES */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                    {/* Botão de Convite (Novo) */}
+                    <InvitePatientModal>
+                        {/* Este botão abaixo será o 'children' do modal */}
+                        <Button variant="outline">
+                            <MailPlus className="h-4 w-4 mr-2" />
+                            Convidar por Email
+                        </Button>
+                    </InvitePatientModal>
+
+                    {/* Botão de Adicionar Manual (Existente) */}
+                    <Button asChild>
+                        <Link href="/doctor-dashboard/add-user">
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Adicionar Paciente
+                        </Link>
+                    </Button>
+                </div>
             </PageHeader>
 
             <Card className="shadow-md">
@@ -101,7 +113,7 @@ export default function UserListPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-24 text-center">
-                                        Nenhum paciente encontrado para esta clínica.
+                                        Nenhum paciente encontrado. Use os botões acima para adicionar ou convidar.
                                     </TableCell>
                                 </TableRow>
                             )}

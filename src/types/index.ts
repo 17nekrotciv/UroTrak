@@ -38,6 +38,7 @@ export interface UserProfile {
 }
 
 export interface Clinic {
+  id?: string
   createdAt: string,
   name: string,
   ownerId: string,

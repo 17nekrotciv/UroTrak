@@ -16,6 +16,8 @@ interface DataContextType {
   createPatientAccount: (data: Omit<UserProfile, 'uid' | 'role' | 'clinicId'> & { password?: string }) => Promise<void>;
   updateClinicInfo: (data: Partial<Clinic>) => Promise<void>;
 
+  sendPatientInviteEmail: (email: string) => Promise<{ success: boolean, message: string }>;
+
   addUrinaryLog: (log: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date }, userId?: string) => Promise<void>;
   updateUrinaryLog: (id: string, log: Omit<UrinaryLogEntry, 'id' | 'date'> & { date: Date }, userId?: string) => Promise<void>;
   deleteUrinaryLog: (id: string, userId?: string) => Promise<void>;
@@ -36,6 +38,9 @@ interface DataContextType {
   viewedUserData: AppData | null;
   loadingViewedUser: boolean;
   viewedUserProfile: UserProfile | null;
+
+  allClinics: Clinic[];
+  loadingClinics: boolean;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -56,6 +61,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [viewedUserData, setViewedUserData] = useState<AppData | null>(null);
   const [loadingViewedUser, setLoadingViewedUser] = useState(true);
   const [viewedUserProfile, setViewedUserProfile] = useState<UserProfile | null>(null);
+
+  const [allClinics, setAllClinics] = useState<Clinic[]>([]);
+  const [loadingClinics, setLoadingClinics] = useState(true);
 
   const handleError = useCallback((error: FirestoreError, collectionName: string) => {
     console.error(`Error fetching ${collectionName}: `, error.code, error.message);
@@ -136,6 +144,29 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       unsubscribes.forEach(unsub => unsub());
     };
   }, [user, handleError]);
+
+  useEffect(() => {
+    setLoadingClinics(true);
+    const clinicsQuery = query(collection(db, 'clinic'), orderBy('name', 'asc'));
+
+    const unsubscribe = onSnapshot(clinicsQuery,
+      (snapshot: QuerySnapshot) => {
+        const clinicsList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Clinic[];
+        setAllClinics(clinicsList);
+        setLoadingClinics(false);
+      },
+      (error: FirestoreError) => {
+        console.error("Erro ao buscar todas as clínicas:", error);
+        handleError(error, 'lista de clínicas');
+        setLoadingClinics(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [handleError]);
 
   useEffect(() => {
     if (!userProfile || userProfile.role !== 'doctor' || !userProfile.clinicId) {
@@ -375,14 +406,37 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const sendPatientInviteEmail = async (email: string) => {
+    if (!userProfile?.role || userProfile.role !== 'doctor') {
+      throw new Error("Apenas médicos podem enviar convites.");
+    }
+
+    const functions = getFunctions();
+    const sendPatientInvite = httpsCallable(functions, 'sendPatientInvite');
+
+    try {
+      const result = await sendPatientInvite({ email });
+      const resultData = result.data as { success: boolean, message: string };
+      if (!resultData.success) {
+        throw new Error(resultData.message || "A Cloud Function retornou um erro.");
+      }
+      return resultData; // Retorna sucesso
+    } catch (error: any) {
+      console.error("Erro ao chamar a Cloud Function 'sendPatientInvite':", error);
+      // Repassa o erro para o frontend
+      throw error;
+    }
+  };
+
   return (
     <DataContext.Provider value={
       {
         appData, loadingData, userProfile, setUserProfile, createPatientAccount, updateClinicInfo,
-        clinicDoctorProfile,
+        clinicDoctorProfile, sendPatientInviteEmail,
         addUrinaryLog, addErectileLog, addPSALog, updateUrinaryLog, updateErectileLog,
         updatePSALog, deleteUrinaryLog, deleteErectileLog, deletePSALog, updateUserInfo,
-        clinicUsers, loadingClinicUsers, loadViewedUserData, viewedUserData, loadingViewedUser, viewedUserProfile
+        clinicUsers, loadingClinicUsers, loadViewedUserData, viewedUserData, loadingViewedUser, viewedUserProfile,
+        allClinics, loadingClinics
       }
     }>
       {children}

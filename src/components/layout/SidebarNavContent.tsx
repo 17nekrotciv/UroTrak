@@ -104,7 +104,6 @@ export default function SidebarNavContent({ onLinkClick }: SidebarNavContentProp
               {displayProfile.crm && displayProfile.rqe && <span> | </span>}
               {displayProfile.rqe && <span>RQE: {displayProfile.rqe}</span>}
             </div>
-            <p>Responsável Técnico</p>
           </>
         ) : (
           // Fallback enquanto os dados carregam ou se o paciente não tem médico associado
@@ -123,17 +122,6 @@ export default function SidebarNavContent({ onLinkClick }: SidebarNavContentProp
         )}
 
         {/* O restante das informações (links, contato, etc.) */}
-        <p>
-          <Link href="https://www.clinicauroonco.com.br" target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
-            clinicauroonco.com.br
-          </Link>
-        </p>
-        <div className="flex items-center justify-center gap-2">
-          <Link href="https://api.whatsapp.com/send?phone=5511995901506" target="_blank" rel="noopener noreferrer" className="hover:text-primary inline-flex items-center gap-1 hover:underline">
-            <FaWhatsapp className="h-4 w-4" />
-            <span>Agendamentos</span>
-          </Link>
-        </div>
         <p className="pt-2">&copy; {new Date().getFullYear()} UroTrack. Todos os direitos reservados.</p>
       </div>
     </div>
