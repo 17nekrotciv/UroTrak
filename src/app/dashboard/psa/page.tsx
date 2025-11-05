@@ -155,7 +155,6 @@ export default function PSAPage() {
         });
         toast({ title: "Sucesso", description: "Novo resultado salvo com sucesso." });
         reset({ entries: [getDefaultPSAEntry()] });
-        setTimeout(() => router.push('/dashboard/success'), 100);
       }
     } catch (error: any) {
       console.error("Falha ao salvar resultado de PSA:", error);

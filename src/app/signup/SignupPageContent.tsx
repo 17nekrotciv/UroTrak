@@ -2,15 +2,15 @@
 "use client";
 
 
-// ✅ 1. Importar useState, useCallback
-import React, { useState, useCallback, useEffect, Suspense } from 'react';
+"use client";
+
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-// ✅ 2. Importar o 'app' do firebase e as 'functions'
 import { auth, app } from '@/lib/firebase';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import AuthLayout from '@/components/auth/AuthLayout';
-
-// ✅ 3. Manter ícones e Dialog
 import { Loader2, UserPlus, ArrowLeft, ArrowRight, User, Stethoscope } from 'lucide-react';
 import {
     Dialog,
@@ -28,16 +26,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { IMaskInput } from 'react-imask';
-// ✅ 4. REMOVER 'useCepAutocomplete' - A lógica será local
-// import { useCepAutocomplete } from '@/hooks/use-cep-autocomplete';
 import { cn } from '@/lib/utils';
 import { useData } from '@/contexts/data-provider';
 
+// ------------------- Schemas -------------------
 
-// --- ✅ 5. SCHEMAS ATUALIZADOS PARA BATER COM A CLOUD FUNCTION ---
 const step1Schema = z.object({
     displayName: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
     email: z.string().email({ message: "Email inválido." }),
@@ -45,7 +40,6 @@ const step1Schema = z.object({
     role: z.enum(['doctor', 'user'], { required_error: "O tipo de conta é obrigatório." }),
 });
 
-// ✅ 6. step2Schema atualizado com 'address' aninhado e 'zipCode'
 const step2Schema = z.object({
     cpf: z.string().length(11, { message: "CPF deve ter 11 dígitos." }),
     phone: z.string().min(10, { message: "Telefone inválido." }),
@@ -63,7 +57,6 @@ const step2Schema = z.object({
     clinicId: z.string().optional()
 });
 
-// Campos de médico (step3) permanecem opcionais no schema base
 const step3Schema = z.object({
     crm: z.string().optional(),
     especializacao: z.string().optional(),
@@ -72,61 +65,46 @@ const step3Schema = z.object({
     clinicCnpj: z.string().optional(),
 });
 
-// ✅ 7. Schema final (mesma lógica de antes, mas agora com 'address' aninhado)
-const signupSchema = step1Schema.merge(step2Schema).merge(step3Schema).refine(
-    (data) => {
-        // Se for médico, o CRM é OBRIGATÓRIO (como na Cloud Function)
-        if (data.role === 'doctor') {
-            return !!data.crm && data.crm.length >= 3;
-        }
-        return true; // Se for paciente, ignora
-    },
-    {
+const signupSchema = step1Schema.merge(step2Schema).merge(step3Schema)
+    .refine((data) => {
+        if (data.role === 'doctor') return !!data.crm && data.crm.length >= 3;
+        return true;
+    }, {
         message: "CRM é obrigatório para médicos.",
         path: ["crm"],
-    }
-).refine(
-    (data) => {
-        // Manter validação de CNPJ (14 dígitos numéricos) no frontend
+    })
+    .refine((data) => {
         if (data.role === 'doctor') {
-            if (!data.clinicCnpj || data.clinicCnpj.length === 0) {
-                return true; // CNPJ é opcional
-            }
+            if (!data.clinicCnpj || data.clinicCnpj.length === 0) return true;
             return data.clinicCnpj.length === 14;
         }
         return true;
-    },
-    {
+    }, {
         message: "CNPJ deve ter 14 números.",
         path: ["clinicCnpj"],
-    }
-);
-
+    });
 
 type SignupFormInputs = z.infer<typeof signupSchema>;
+
+// ------------------- COMPONENTE PRINCIPAL -------------------
 
 export default function SignupPage() {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1);
     const [roleSelected, setRoleSelected] = useState<'doctor' | 'user' | null>(null);
-
     const router = useRouter();
     const { toast } = useToast();
     const { allClinics, loadingClinics } = useData();
     const searchParams = useSearchParams();
-
     const [clinicIdFromUrl, setClinicIdFromUrl] = useState<string | null>(null);
     const [clinicNameFromUrl, setClinicNameFromUrl] = useState<string | null>(null);
-
-    const { register, handleSubmit, formState: { errors }, trigger, control, setValue, setFocus, watch } = useForm<SignupFormInputs>({
-        resolver: zodResolver(signupSchema),
-        mode: "onBlur"
-    });
-
+    const { register, handleSubmit, formState: { errors }, trigger, control, setValue, setFocus, watch } =
+        useForm<SignupFormInputs>({ resolver: zodResolver(signupSchema), mode: "onBlur" });
     const role = watch("role");
-
-    // ✅ 8. Lógica do CEP movida para dentro do componente
     const [isCepLoading, setIsCepLoading] = useState(false);
+
+    // ------------------- Funções -------------------
+
     const handleCepSearch = useCallback(async (cep: string) => {
         if (cep.length !== 8) return;
         setIsCepLoading(true);
@@ -137,165 +115,135 @@ export default function SignupPage() {
                 toast({ title: "CEP não encontrado", variant: "destructive" });
                 return;
             }
-            // Atualiza os campos aninhados 'address'
             setValue('address.street', data.logradouro);
             setValue('address.neighborhood', data.bairro);
             setValue('address.city', data.localidade);
             setValue('address.state', data.uf);
             setFocus('address.number');
-        } catch (error) {
+        } catch {
             toast({ title: "Erro ao buscar CEP", description: "Verifique sua conexão.", variant: "destructive" });
         } finally {
             setIsCepLoading(false);
         }
     }, [setValue, setFocus, toast]);
 
-
-    const onSignupSuccess = (userRole: 'doctor' | 'user') => {
-        toast({ title: "Cadastro realizado com sucesso!", description: "Você será redirecionado para o painel." });
-        if (userRole === 'doctor') {
-            router.push('/doctor-dashboard');
-        } else {
-            router.push('/dashboard');
-        }
-    };
-
-    // ✅ 9. onSignupError atualizado para tratar erros da Cloud Function
-    const onSignupError = (error: any) => {
-        console.error(`Signup error:`, error);
-        let errorMessage = `Ocorreu um erro ao tentar criar a conta. Tente novamente.`;
-
-        // Erros da Cloud Function (vem com 'code' e 'message')
-        if (error.code && error.message) {
-            switch (error.code) {
-                // Erros do Firebase Auth
-                case 'auth/email-already-in-use':
-                    errorMessage = "Este email já está cadastrado. Tente fazer login ou use um email diferente.";
-                    break;
-                // Erros da HttpsError (Cloud Function)
-                case 'already-exists':
-                case 'invalid-argument':
-                    errorMessage = error.message; // Ex: "O CPF informado já está cadastrado."
-                    break;
-                case 'permission-denied':
-                    errorMessage = "Falha ao salvar dados: permissão negada.";
-                    break;
-                default:
-                    errorMessage = `Erro no cadastro (${error.code}): ${error.message || 'Tente novamente.'}`;
-            }
-        } else if (error && typeof error === 'object' && 'message' in error) {
-            errorMessage = (error as { message: string }).message;
-        }
-
-        toast({ title: "Erro no Cadastro", description: errorMessage, variant: "destructive" });
-    };
-
-    // ✅ 10. handleNextStep atualizado para validar os campos aninhados
-    const handleNextStep = async () => {
-        let fieldsToValidate: (keyof SignupFormInputs)[] = [];
-        if (step === 1) {
-            fieldsToValidate = ["displayName", "email", "password", "role"];
-        } else if (step === 2) {
-            // Validar os campos da Etapa 2, incluindo o objeto 'address'
-            fieldsToValidate = ["cpf", "phone", "birthDate", "gender", "address", "clinicId"]
-        }
-
-        const isValid = await trigger(fieldsToValidate);
-        if (isValid) {
-            if (step === 1) {
-                setStep(2);
-            } else if (step === 2) {
-                if (role === 'doctor') {
-                    setStep(3);
-                } else {
-                    handleSubmit(onSubmit)();
-                }
-            }
-        }
-    };
-
-    // ✅ 11. onSubmit TOTALMENTE REFEITO para usar a Cloud Function
-    const onSubmit: SubmitHandler<SignupFormInputs> = async (data) => {
-        setLoading(true);
-        try {
-            // Etapa 1: Criar o usuário no Firebase Auth (cliente)
-            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-            const user = userCredential.user;
-
-            // Atualizar o perfil do Auth (displayNamyye)
-            await updateProfile(user, { displayName: data.displayName });
-
-            // Etapa 2: Chamar a Cloud Function 'completeUserRegistration'
-            const functions = getFunctions(app); // 'app' importado de @/lib/firebase
-            const completeUserRegistration = httpsCallable(functions, 'completeUserRegistration');
-
-            // Os 'dados' do formulário (SignupFormInputs) já correspondem à interface 'SignupData' da função
-            // A função será executada com o 'auth' do usuário recém-criado
-            await completeUserRegistration(data);
-
-            // Etapa 3: Sucesso
-            onSignupSuccess(data.role);
-
-        } catch (error: any) {
-            // Etapa 4: Tratamento de erro
-
-            // Se a Cloud Function falhar (ex: CPF duplicado), o usuário do Auth foi criado
-            // mas o do Firestore não. Devemos deletar o usuário do Auth para permitir nova tentativa.
-            const currentUser = auth.currentUser;
-            if (currentUser && error.code !== 'auth/email-already-in-use') {
-                try {
-                    await currentUser.delete();
-                    console.log("Criação do usuário no Auth revertida com sucesso.");
-                } catch (delError) {
-                    console.error("Falha crítica ao reverter usuário do Auth:", delError);
-                    // Se a reversão falhar, o usuário está em estado inconsistente.
-                    onSignupError({
-                        message: "Ocorreu um erro e sua conta não pôde ser criada. O email pode já estar em uso. Contate o suporte."
-                    });
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            onSignupError(error); // Exibe o erro (ex: "CPF já cadastrado")
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
     const handleRoleSelect = (selectedRole: 'doctor' | 'user') => {
         setValue('role', selectedRole);
         setRoleSelected(selectedRole);
     };
 
-    useEffect(() => {
-        const inviteId = searchParams.get('invite');
-        const clinicIdParam = searchParams.get('clinic');
-
-        if (clinicIdParam && !loadingClinics && allClinics.length > 0) {
-            // Encontramos um ID de clínica na URL
-            const clinic = allClinics.find(c => c.id === clinicIdParam);
-
-            if (clinic) {
-                // É um convite válido de paciente
-                handleRoleSelect('user'); // Força o papel para "paciente" (pula o modal)
-                setValue('clinicId', clinic.id); // Define o valor no formulário
-                setClinicIdFromUrl(clinic.id ?? null); // Guarda o ID para desativar o campo
-                setClinicNameFromUrl(clinic.name); // Guarda o nome para exibir
+    const handleNextStep = async () => {
+        let fieldsToValidate: (keyof SignupFormInputs)[] = [];
+        if (step === 1) fieldsToValidate = ["displayName", "email", "password", "role"];
+        else if (step === 2) fieldsToValidate = ["cpf", "phone", "birthDate", "gender", "address", "clinicId"];
+        const isValid = await trigger(fieldsToValidate);
+        if (isValid) {
+            if (step === 1) setStep(2);
+            else if (step === 2) {
+                if (role === 'doctor') setStep(3);
+                else handleSubmit(onSubmit)();
             }
         }
-    }, [searchParams, allClinics, loadingClinics, setValue]); // Dependências
+    };
 
+    const onSignupSuccess = (userRole: 'doctor' | 'user') => {
+        toast({ title: "Cadastro realizado com sucesso!", description: "Você será redirecionado para o painel." });
+        router.push(userRole === 'doctor' ? '/doctor-dashboard' : '/dashboard');
+    };
+
+    const onSignupError = (error: any) => {
+        console.error("Signup error:", error);
+        let errorMessage = "Ocorreu um erro ao tentar criar a conta. Tente novamente.";
+        if (error.code === 'auth/email-already-in-use') errorMessage = "Este email já está cadastrado.";
+        else if (error.code && error.message) errorMessage = error.message;
+        toast({ title: "Erro no Cadastro", description: errorMessage, variant: "destructive" });
+    };
+
+    const onSubmit: SubmitHandler<SignupFormInputs> = async (data) => {
+        setLoading(true);
+        try {
+            let user = auth.currentUser;
+
+            // 🔹 Caso o usuário ainda não exista (cadastro manual)
+            if (!user) {
+                const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+                user = userCredential.user;
+
+                // Atualiza o nome no perfil Auth
+                await updateProfile(user, { displayName: data.displayName });
+            }
+
+            // 🔹 Chama a Cloud Function que completa o cadastro (Firestore)
+            const functions = getFunctions(app);
+            const completeUserRegistration = httpsCallable(functions, "completeUserRegistration");
+
+            await completeUserRegistration(data);
+
+            // 🔹 Redireciona conforme o tipo
+            onSignupSuccess(data.role);
+
+        } catch (error: any) {
+            const currentUser = auth.currentUser;
+
+            // Se houve erro e o usuário foi parcialmente criado
+            if (currentUser && error.code !== "auth/email-already-in-use") {
+                try {
+                    await currentUser.delete();
+                } catch {
+                    onSignupError({ message: "Erro crítico: conta criada parcialmente." });
+                }
+            }
+
+            onSignupError(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Pré-preenche dados vindos do login social
+    useEffect(() => {
+        const email = searchParams.get("email");
+        const name = searchParams.get("name");
+        if (email) setValue("email", email);
+        if (name) setValue("displayName", name);
+    }, [searchParams, setValue]);
+
+    // Convite de clínica
+    useEffect(() => {
+        const clinicIdParam = searchParams.get('clinic');
+        if (clinicIdParam && !loadingClinics && allClinics.length > 0) {
+            const clinic = allClinics.find(c => c.id === clinicIdParam);
+            if (clinic) {
+                handleRoleSelect('user');
+                setValue('clinicId', clinic.id);
+                setClinicIdFromUrl(clinic.id ? String(clinic.id) : null);
+                setClinicNameFromUrl(clinic.name ? String(clinic.name) : null);
+            }
+        }
+    }, [searchParams, allClinics, loadingClinics, setValue]);
+
+    // ------------------- UI -------------------
 
     return (
         <AuthLayout title="Cadastro">
 
-            {/* Modal de Seleção de Tipo de Conta (não muda) */}
-            <Dialog open={roleSelected === null}>
-                <DialogContent
-                    className="sm:max-w-md"
-                >
+            {/* ✅ Modal corrigido */}
+            <Dialog
+                open={roleSelected === null}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                        setRoleSelected(null);
+                        if (auth.currentUser) {
+                            auth.signOut().then(() => {
+                                router.push("/login");
+                            });
+                        } else {
+                            router.push("/login");
+                        }
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="text-center text-2xl">Primeiro Passo</DialogTitle>
                         <DialogDescription className="text-center pt-2">
@@ -303,19 +251,11 @@ export default function SignupPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                        <Button
-                            variant="outline"
-                            className="h-24 flex-col gap-2"
-                            onClick={() => handleRoleSelect('user')}
-                        >
+                        <Button variant="outline" className="h-24 flex-col gap-2" onClick={() => handleRoleSelect('user')}>
                             <User className="h-8 w-8 text-primary" />
                             <span className="text-base">Sou Paciente</span>
                         </Button>
-                        <Button
-                            variant="outline"
-                            className="h-24 flex-col gap-2"
-                            onClick={() => handleRoleSelect('doctor')}
-                        >
+                        <Button variant="outline" className="h-24 flex-col gap-2" onClick={() => handleRoleSelect('doctor')}>
                             <Stethoscope className="h-8 w-8 text-primary" />
                             <span className="text-base">Sou Médico</span>
                         </Button>

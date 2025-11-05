@@ -85,42 +85,47 @@ export default function LoginPage() {
       onLoginError({ code: 'auth/no-user-provided' });
       return;
     }
+
     try {
       const userDocRef = doc(db, "users", user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (userDocSnap) {
-        const userData = userDocSnap.data()
-        const userRole = userData ? userData.role : ""
-        if (userRole == "user") {
-          router.push('/dashboard')
-        }
-        else if (userRole == "doctor") {
-          router.push('/doctor-dashboard')
-        }
-        else {
-          router.push('/dashboard');
+      console.log("📘 [DEBUG] user.uid:", user.uid);
+      console.log("📘 [DEBUG] userDocSnap.exists():", userDocSnap.exists());
+      console.log("📘 [DEBUG] userDocSnap.data():", userDocSnap.data());
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const userRole = userData?.role || "";
+
+        // ⚠️ Caso o documento exista mas esteja vazio (sem role)
+        if (!userRole) {
+          console.warn("⚠️ Documento Firestore sem 'role', redirecionando para cadastro:", user.uid);
+          router.push(`/signup?uid=${user.uid}&email=${encodeURIComponent(user.email ?? "")}&name=${encodeURIComponent(user.displayName ?? "")}`);
+          return;
         }
 
-        toast({ title: "Login bem-sucedido!", description: "Redirecionando para o painel..." });
+        toast({ title: "Login bem-sucedido!", description: "Redirecionando..." });
+
+        if (userRole === "doctor") router.push("/doctor-dashboard");
+        else router.push("/dashboard");
       } else {
-        // Erro: Usuário autenticado, mas sem perfil no Firestore.
-        // Isso pode acontecer se o cadastro não criar o documento corretamente.
-        console.error("Documento do usuário não encontrado no Firestore:", user.uid);
+        console.warn("Usuário autenticado, mas sem perfil Firestore:", user.uid);
         toast({
-          title: "Erro de Perfil",
-          description: "Não foi possível encontrar os dados do seu perfil. Por favor, entre em contato com o suporte.",
-          variant: "destructive"
+          title: "Cadastro incompleto",
+          description: "Precisamos de mais algumas informações para concluir seu cadastro.",
         });
-        // Opcional: Deslogar o usuário para evitar que ele fique em um estado "preso"
-        await auth.signOut();
+        sessionStorage.setItem("forceSignupRedirect", "true");
+        router.push(`/signup?uid=${user.uid}&email=${encodeURIComponent(user.email ?? "")}&name=${encodeURIComponent(user.displayName ?? "")}`);
       }
-    }
-    catch (error) {
+
+    } catch (error) {
       console.error("Erro ao buscar dados do usuário no Firestore:", error);
-      onLoginError({ code: 'firestore/fetch-error' }, 'Firestore');
+      onLoginError({ code: "firestore/fetch-error" }, "Firestore");
     }
-  }
+  };
+
+
 
   const handleSocialLogin = async (provider: FirebaseAuthProvider, providerName: string) => {
     setSocialLoading(providerName);

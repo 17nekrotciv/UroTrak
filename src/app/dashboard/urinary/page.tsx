@@ -173,7 +173,6 @@ export default function UrinaryPage() {
         });
         toast({ title: "Sucesso", description: "Novo registro salvo com sucesso." });
         reset({ entries: [getDefaultUrinaryEntry()] });
-        setTimeout(() => router.push('/dashboard/success'), 100);
       }
     } catch (error: any) {
       console.error("Falha ao salvar registro urinário:", error);

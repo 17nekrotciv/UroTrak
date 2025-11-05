@@ -170,7 +170,6 @@ export default function ErectilePage() {
         });
         toast({ title: "Sucesso", description: "Novo registro salvo com sucesso." });
         reset({ entries: [getDefaultErectileEntry()] });
-        setTimeout(() => router.push('/dashboard/success'), 100);
       }
     } catch (error: any) {
       console.error("Falha ao salvar registro:", error);

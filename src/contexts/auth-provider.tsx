@@ -1,16 +1,16 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import type { User as FirebaseUser, User } from 'firebase/auth';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
-import type { UserProfile, Clinic } from '@/types'; // Importando Clinic
-import { useRouter, usePathname } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import type { User as FirebaseUser, User } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import type { UserProfile, Clinic } from "@/types";
+import { useRouter, usePathname } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 interface AuthContextType {
-  authUser: FirebaseUser | null
+  authUser: FirebaseUser | null;
   user: UserProfile | null;
   loading: boolean;
   logout: () => Promise<void>;
@@ -19,23 +19,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Garante que um perfil de usuário exista no Firestore no primeiro login.
-const manageUserInFirestore = async (firebaseUser: FirebaseUser) => {
-  const userDocRef = doc(db, "users", firebaseUser.uid);
+// 🔒 Verifica se o usuário possui um perfil no Firestore, mas não cria nada.
+const checkUserInFirestore = async (firebaseUser: FirebaseUser) => {
   try {
+    const userDocRef = doc(db, "users", firebaseUser.uid);
     const userDocSnap = await getDoc(userDocRef);
     if (!userDocSnap.exists()) {
-      await setDoc(userDocRef, {
-        displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário Anônimo',
-        email: firebaseUser.email,
-        photoURL: firebaseUser.photoURL,
-        createdAt: Timestamp.fromDate(new Date()),
-        providerId: firebaseUser.providerData[0]?.providerId || 'email',
-        role: 'user', // Define um 'role' padrão
-      });
+      console.warn(
+        "Usuário autenticado, mas sem perfil no Firestore — aguardando cadastro manual:",
+        firebaseUser.uid
+      );
+      return null;
     }
+    return userDocSnap.data();
   } catch (error) {
-    console.error("Erro ao gerenciar usuário no Firestore:", error);
+    console.error("Erro ao verificar usuário no Firestore:", error);
+    return null;
   }
 };
 
@@ -51,47 +50,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         setAuthUser(firebaseUser);
 
-        await manageUserInFirestore(firebaseUser);
+        const dbUser = await checkUserInFirestore(firebaseUser);
 
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        if (!dbUser) {
+          // Mantém o usuário logado, mas ainda sem perfil completo
+          setUser(null);
+          setLoading(false);
 
-        if (userDocSnap.exists()) {
-          const dbUser = userDocSnap.data();
-          // 1. Cria um objeto base com os dados do usuário
-          const finalUser: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: dbUser.displayName || firebaseUser.displayName,
-            photoURL: dbUser.photoURL || firebaseUser.photoURL,
-            role: dbUser.role || 'user',
-            clinicId: dbUser.clinicId || null,
-          };
-
-          // 2. Se houver um clinicId, busca os dados da clínica
-          if (finalUser.clinicId && typeof finalUser.clinicId === 'string') {
-            const clinicDocRef = doc(db, 'clinic', finalUser.clinicId);
-            const clinicDoc = await getDoc(clinicDocRef);
-            if (clinicDoc.exists()) {
-              // 3. Anexa os dados da clínica ao objeto final do usuário
-              finalUser.clinic = clinicDoc.data() as Clinic;
-            }
+          // Se ele estiver fora das páginas de login/signup → envia para /signup
+          if (pathname !== "/signup") {
+            const email = firebaseUser.email ? `&email=${encodeURIComponent(firebaseUser.email)}` : "";
+            const name = firebaseUser.displayName ? `&name=${encodeURIComponent(firebaseUser.displayName)}` : "";
+            router.replace(`/signup?uid=${firebaseUser.uid}${email}${name}`);
           }
-
-          setUser(finalUser); // Define o estado com o usuário completo
-        } else {
-          // Fallback raro caso o documento não seja encontrado após a criação.
-          console.error("Documento do usuário não pôde ser lido do Firestore.");
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            role: 'user',
-            clinicId: ''
-          });
-          setAuthUser(null);
+          return;
         }
+
+        // Caso o perfil exista no Firestore, carrega-o completamente
+        const finalUser: UserProfile = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: dbUser.displayName || firebaseUser.displayName,
+          photoURL: dbUser.photoURL || firebaseUser.photoURL,
+          role: dbUser.role || "user",
+          clinicId: dbUser.clinicId || null,
+        };
+
+        // Busca dados da clínica, se houver
+        if (finalUser.clinicId && typeof finalUser.clinicId === "string") {
+          const clinicDocRef = doc(db, "clinic", finalUser.clinicId);
+          const clinicDoc = await getDoc(clinicDocRef);
+          if (clinicDoc.exists()) {
+            finalUser.clinic = clinicDoc.data() as Clinic;
+          }
+        }
+
+        setUser(finalUser);
       } else {
         setAuthUser(null);
         setUser(null);
@@ -100,25 +94,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [pathname, router]);
 
-  // Efeito para gerenciar redirecionamentos com base no estado de autenticação e na rota.
+  // 🧭 Redirecionamento de acordo com o estado de autenticação
   useEffect(() => {
     if (!loading) {
-      const isAuthPage = pathname === '/login' || pathname === '/signup';
-      if (!user && !isAuthPage) {
-        router.push('/login');
-      } else if (user && isAuthPage) {
+      const isAuthPage = pathname === "/login" || pathname === "/signup";
+
+      // 1️⃣ Usuário não autenticado → força para /login
+      if (!authUser && !isAuthPage) {
+        router.push("/login");
+        return;
+      }
+
+      // 2️⃣ Usuário autenticado mas sem Firestore → fica no /signup
+      if (authUser && !user && pathname !== "/signup") {
+        router.replace("/signup");
+        return;
+      }
+
+      // 3️⃣ Usuário autenticado e com Firestore → redireciona conforme o papel
+      if (user && isAuthPage) {
         switch (user.role) {
-          case 'admin':
-          case 'user':
-            router.push('/dashboard');
+          case "doctor":
+            router.push("/doctor-dashboard");
             break;
-          case 'doctor':
-            router.push('/doctor-dashboard');
-            break;
+          case "admin":
+          case "user":
           default:
-            router.push('/dashboard');
+            router.push("/dashboard");
+            break;
         }
       }
     }
@@ -129,7 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await auth.signOut();
       setUser(null);
-      router.push('/login');
+      router.push("/login");
     } catch (error) {
       console.error("Erro ao fazer logout: ", error);
     } finally {
@@ -137,8 +142,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Exibe um loader global enquanto a verificação inicial de auth está acontecendo.
-  if (loading && (pathname !== '/login' && pathname !== '/signup')) {
+  // Loader global durante inicialização do estado de auth
+  if (loading && pathname !== "/login" && pathname !== "/signup") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -156,7 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
