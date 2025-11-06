@@ -95,7 +95,7 @@ export const sendPatientInvite = onCall(
             });
 
             // 5. Link de registro (⚠️ ATUALIZE PARA PRODUÇÃO)
-            const registrationUrl = `//https://studio--urotrack-qqp6e.us-central1.hosted.app/signup?invite=${inviteId}&clinic=${clinicId}`;
+            const registrationUrl = `https://studio--urotrack-qqp6e.us-central1.hosted.app/signup?invite=${inviteId}&clinic=${clinicId}`;
 
             // 6. Enviar e-mail com SendGrid
             sgMail.setApiKey(SENDGRID_API_KEY.value());

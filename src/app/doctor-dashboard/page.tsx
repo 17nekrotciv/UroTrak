@@ -1,15 +1,16 @@
 // src/app/doctor-dashboard/page.tsx
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react'; // 1. Importar o useState
 import PageHeader from '@/components/ui/PageHeader';
-import { Loader2, FileText, Users, UserPlus, MailPlus } from 'lucide-react'; // Ícone UserPlus importado
+import { Loader2, FileText, Users, UserPlus, MailPlus, Search } from 'lucide-react'; // 2. Importar o ícone de Busca
 import { useData } from '@/contexts/data-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { InvitePatientModal } from './invite/page';
+import { Input } from '@/components/ui/input'; // 3. Importar o Input
 
 const capitalize = (s: string) => {
     if (typeof s !== 'string' || !s) return s;
@@ -18,6 +19,7 @@ const capitalize = (s: string) => {
 
 export default function UserListPage() {
     const { clinicUsers, loadingClinicUsers, userProfile } = useData();
+    const [filter, setFilter] = useState(''); // 4. Adicionar estado para o filtro
 
     if (!userProfile) {
         return (
@@ -51,6 +53,11 @@ export default function UserListPage() {
         );
     }
 
+    // 5. Criar a lista de usuários filtrados
+    const filteredUsers = clinicUsers.filter(user =>
+        user.displayName?.toLowerCase().includes(filter.toLowerCase())
+    );
+
     return (
         <>
             <PageHeader
@@ -58,18 +65,13 @@ export default function UserListPage() {
                 description={`Pacientes associados à clínica: ${userProfile.clinic?.name || 'N/A'}`}
                 icon={Users}
             >
-                {/* ✅ 3. ADICIONAR OS DOIS BOTÕES */}
                 <div className="flex flex-col sm:flex-row gap-2">
-                    {/* Botão de Convite (Novo) */}
                     <InvitePatientModal>
-                        {/* Este botão abaixo será o 'children' do modal */}
                         <Button variant="outline">
                             <MailPlus className="h-4 w-4 mr-2" />
                             Convidar por Email
                         </Button>
                     </InvitePatientModal>
-
-                    {/* Botão de Adicionar Manual (Existente) */}
                     <Button asChild>
                         <Link href="/doctor-dashboard/add-user">
                             <UserPlus className="h-4 w-4 mr-2" />
@@ -84,6 +86,17 @@ export default function UserListPage() {
                     <CardTitle>Pacientes da Clínica</CardTitle>
                 </CardHeader>
                 <CardContent>
+                    {/* 6. Adicionar o campo de Input para o filtro */}
+                    <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Filtrar por nome..."
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="w-full max-w-sm pl-10"
+                        />
+                    </div>
+
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -94,8 +107,9 @@ export default function UserListPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {clinicUsers && clinicUsers.length > 0 ? (
-                                clinicUsers.map((user) => (
+                            {/* 7. Usar a lista filtrada e atualizar a mensagem de "nenhum resultado" */}
+                            {filteredUsers.length > 0 ? (
+                                filteredUsers.map((user) => (
                                     <TableRow key={user.uid}>
                                         <TableCell className="font-medium">{user.displayName}</TableCell>
                                         <TableCell>{user.email}</TableCell>
@@ -113,7 +127,10 @@ export default function UserListPage() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-24 text-center">
-                                        Nenhum paciente encontrado. Use os botões acima para adicionar ou convidar.
+                                        {clinicUsers.length > 0
+                                            ? `Nenhum paciente encontrado com o nome "${filter}".`
+                                            : "Nenhum paciente encontrado. Use os botões acima para adicionar ou convidar."
+                                        }
                                     </TableCell>
                                 </TableRow>
                             )}

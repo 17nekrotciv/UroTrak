@@ -1,32 +1,39 @@
 // src/app/dashboard/page.tsx
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import PageHeader from '@/components/ui/PageHeader';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, LayoutDashboard, Loader2, X } from 'lucide-react';
 import { useData } from '@/contexts/data-provider';
 import GenericLineChart from '@/components/charts/GenericLineChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+// Importa os novos helpers de data: startOfMonth, endOfMonth
+import { isAfter, isBefore, parseISO, startOfDay, format, startOfMonth, endOfMonth } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+// Remove o DateRange, pois não o usaremos mais
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 export default function DoctorDashboardPage() {
   const router = useRouter();
-  // Agora também pegamos o 'userProfile' para verificar a função (role)
   const { appData, userProfile, loadingData } = useData();
 
-  // --- LÓGICA DE BLOQUEIO ---
+  // Estado para controlar as datas de início e fim separadamente
+  // Define o padrão para o início e fim do mês atual
+  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(new Date()));
+
   useEffect(() => {
-    // Se o perfil já carregou e o usuário é um médico...
     if (userProfile && userProfile.role === 'doctor') {
-      // ...redireciona para o painel de médico.
       router.replace('/doctor-dashboard');
     }
   }, [userProfile, router]);
-  // --- FIM DA LÓGICA DE BLOQUEIO ---
 
-  // Enquanto o perfil ou os dados estão carregando, exibe um loader.
-  // O 'userProfile' é verificado primeiro para a lógica de redirecionamento.
   if (!userProfile || loadingData) {
     return (
       <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
@@ -36,43 +43,54 @@ export default function DoctorDashboardPage() {
     );
   }
 
-  // Se for um médico, o useEffect acima irá redirecionar.
-  // Retornar 'null' aqui evita que o dashboard do paciente "pisque" na tela antes do redirecionamento.
   if (userProfile.role === 'doctor') {
     return null;
   }
 
-  if (loadingData) {
-    return (
-      <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg font-semibold text-foreground">Carregando dados do painel...</p>
-      </div>
-    );
-  }
+  // Função helper para filtrar os logs com base nos novos estados
+  const filterByDateRange = (log: { date: string }) => {
+    const logDate = startOfDay(parseISO(log.date));
 
+    // Se startDate estiver definida e a data do log for anterior, filtra
+    if (startDate && isBefore(logDate, startOfDay(startDate))) {
+      return false;
+    }
+
+    // Se endDate estiver definida e a data do log for posterior, filtra
+    if (endDate && isAfter(logDate, startOfDay(endDate))) {
+      return false;
+    }
+
+    // Se passou em ambas (ou se não estão definidas), inclui
+    return true;
+  };
+
+  // Aplica o filtro (a lógica de filtragem em si não muda)
   const psaDataForChart = appData.psaLogs
+    .filter(filterByDateRange)
     .filter(log => log.psaValue !== null && log.psaValue !== undefined)
     .map(log => ({
       date: log.date,
       'Valor PSA Total': log.psaValue!,
-      'Observação': log.notes // ✨ ADICIONADO AQUI (ajuste o nome do campo se for diferente)
+      'Observação': log.notes
     }));
 
-  const padChangesDataForChart = appData.urinaryLogs
+  const filteredUrinaryLogs = appData.urinaryLogs.filter(filterByDateRange);
+
+  const padChangesDataForChart = filteredUrinaryLogs
     .filter(log => log.padChanges !== null && log.padChanges !== undefined)
     .map(log => ({
       date: log.date,
       'Trocas de Absorventes por dia': log.padChanges!,
-      'Observação': log.medicationNotes // ✨ ADICIONADO AQUI (ajuste o nome do campo se for diferente)
+      'Observação': log.medicationNotes
     }));
 
-  const lossGramsDataForChart = appData.urinaryLogs
+  const lossGramsDataForChart = filteredUrinaryLogs
     .filter(log => log.lossGrams !== null && log.lossGrams !== undefined)
     .map(log => ({
       date: log.date,
       'Perda (g)': log.lossGrams!,
-      'Observação': log.medicationNotes // ✨ ADICIONADO AQUI (ajuste o nome do campo se for diferente)
+      'Observação': log.medicationNotes
     }));
 
   const getErectionQualityScore = (quality: string) => {
@@ -83,11 +101,13 @@ export default function DoctorDashboardPage() {
     return mapping[quality] ?? 0;
   }
 
-  const erectileDataForChart = appData.erectileLogs.map(log => ({
-    date: log.date,
-    'Qualidade da Ereção': getErectionQualityScore(log.erectionQuality),
-    'Observação': log.medicationNotes // Este já estava correto!
-  }));
+  const erectileDataForChart = appData.erectileLogs
+    .filter(filterByDateRange)
+    .map(log => ({
+      date: log.date,
+      'Qualidade da Ereção': getErectionQualityScore(log.erectionQuality),
+      'Observação': log.medicationNotes
+    }));
 
   return (
     <>
@@ -96,6 +116,97 @@ export default function DoctorDashboardPage() {
         description="Visualize o progresso da sua recuperação."
         icon={LayoutDashboard}
       />
+
+      {/* Componente de Filtro de Data com campos separados */}
+      <Card className="mb-6 shadow-md">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+
+            {/* Seletor de Data de Início */}
+            <div className="flex-1 w-full sm:w-auto space-y-2">
+              <Label htmlFor="date-start-picker" className="font-semibold">
+                Data Início
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date-start-picker"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione a data inicial</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    // 👇 CORREÇÃO AQUI
+                    disabled={(date) => (endDate ? isAfter(date, endDate) : false)}
+                    initialFocus
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Seletor de Data de Fim */}
+            <div className="flex-1 w-full sm:w-auto space-y-2">
+              <Label htmlFor="date-end-picker" className="font-semibold">
+                Data Fim
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date-end-picker"
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : <span>Selecione a data final</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    // 👇 CORREÇÃO AQUI
+                    disabled={(date) => (startDate ? isBefore(date, startDate) : false)}
+                    initialFocus
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Botão de Limpar Filtro */}
+            <div className="pt-0 sm:pt-7">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => {
+                  setStartDate(undefined);
+                  setEndDate(undefined);
+                }}
+                title="Limpar filtros"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="space-y-8">
         <Card className="shadow-lg">
