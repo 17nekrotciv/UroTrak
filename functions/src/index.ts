@@ -1,31 +1,29 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-import * as admin from "firebase-admin";
-
+import * as admin from 'firebase-admin';
 
 admin.initializeApp();
 
-
-import { setGlobalOptions } from "firebase-functions";
-import * as functions from "firebase-functions/v1";
+import { setGlobalOptions } from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 // import { onRequest } from "firebase-functions/https";
 // import * as logger from "firebase-functions/logger";
-import { onClinicCreateSetDoctorClaims } from "./modules/users/on-create";
-import { createPatientUser, completeUserRegistration } from "./modules/users/create"
-import { handleAsaasWebhookRequest, handleCreateSubscription } from "./modules/subscriptions/controllers/subscriptionController";
-import { sendPatientInvite } from "./modules/email/sendInvite";
+import { onClinicCreateSetDoctorClaims } from './modules/users/on-create';
+import {
+  createPatientUser,
+  completeUserRegistration,
+} from './modules/users/create';
+import {
+  handleAsaasWebhookRequest,
+  handleCreateSubscription,
+} from './modules/subscriptions/controllers/subscriptionController';
+import { sendPatientInvite } from './modules/email/sendInvite';
+import { addLogsFromN8n } from './modules/n8n/batchWrite';
+import { createSignUp } from './modules/phone/register';
+import { createUserFromN8n } from './modules/n8n/registerUser';
 //export * from "./modules/users/controllers";
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
 
-setGlobalOptions({ region: "southamerica-east1" });
-
+setGlobalOptions({ region: 'southamerica-east1' });
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time. This helps mitigate the impact of unexpected
@@ -39,14 +37,24 @@ setGlobalOptions({ region: "southamerica-east1" });
 // this will be the maximum concurrent request count.
 export { onClinicCreateSetDoctorClaims };
 
-export { createPatientUser }
+export { createPatientUser };
 
-export { completeUserRegistration }
+export { completeUserRegistration };
 
-export { sendPatientInvite }
+export { sendPatientInvite };
 
-export const createSubscription = functions.https.onCall(handleCreateSubscription);
-export const handleAsaasWebhook = functions.https.onRequest(handleAsaasWebhookRequest);
+export { addLogsFromN8n };
+
+export { createSignUp };
+
+export { createUserFromN8n };
+
+export const createSubscription = functions.https.onCall(
+  handleCreateSubscription
+);
+export const handleAsaasWebhook = functions.https.onRequest(
+  handleAsaasWebhookRequest
+);
 
 setGlobalOptions({ maxInstances: 10 });
 
