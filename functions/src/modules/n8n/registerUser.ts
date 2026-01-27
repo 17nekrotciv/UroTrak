@@ -39,7 +39,7 @@ const sendTemporaryPasswordEmail = async (
   const msg = {
     to: toEmail,
     from: {
-      email: 'urotrack@clinicauroonco.com.br', // O e-mail verificado no SendGrid (Mantenha o seu!)
+      email: 'urotrack@clinicauroonco.com.br',
       name: 'UroTrack - Clínica Uro Onco',
     },
     subject: 'Sua Conta UroTrack Foi Criada - Senha Provisória',

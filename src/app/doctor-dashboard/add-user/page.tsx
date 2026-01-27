@@ -15,9 +15,28 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import PageHeader from '@/components/ui/PageHeader';
-import { Loader2, UserPlus, ArrowLeft } from 'lucide-react';
+import { Loader2, UserPlus, ArrowLeft, MessageSquare } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserProfile } from '@/types';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+
+const callSignUpFunction = async (phoneNumber: string, clinicId: string) => {
+    const cloudFunctionUrl = 'https://createsignup-qhzudkm4pq-uc.a.run.app';
+    const response = await fetch(cloudFunctionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber, clinicId }),
+    });
+    if (!response.ok) throw new Error(`Erro ${response.status}`);
+    return response.json();
+};
 
 // Schema de validação com Zod
 const patientSchema = z.object({
@@ -40,11 +59,14 @@ const patientSchema = z.object({
 type PatientFormInputs = z.infer<typeof patientSchema>;
 
 export default function AddUserPage() {
-    const { createPatientAccount } = useData();
+    const { createPatientAccount, userProfile } = useData();
     const { toast } = useToast();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCepLoading, setIsCepLoading] = useState(false);
+    const [showNotificationModal, setShowNotificationModal] = useState(false);
+    const [isSendingNotification, setIsSendingNotification] = useState(false);
+    const [patientData, setPatientData] = useState<PatientFormInputs | null>(null);
 
     const {
         handleSubmit,
@@ -91,7 +113,10 @@ export default function AddUserPage() {
                 title: "✅ Sucesso!",
                 description: `A conta para ${data.displayName} foi criada.`,
             });
-            router.push('/doctor-dashboard');
+
+            // Armazenar dados do paciente e mostrar modal de confirmação
+            setPatientData(data);
+            setShowNotificationModal(true);
         } catch (error: any) {
             toast({
                 title: "❌ Erro ao criar paciente",
@@ -101,6 +126,36 @@ export default function AddUserPage() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleSendNotification = async () => {
+        if (!patientData || !userProfile?.clinicId) return;
+
+        setIsSendingNotification(true);
+        try {
+            const fullPhoneNumber = '+55' + patientData.phone;
+            await callSignUpFunction(fullPhoneNumber, userProfile.clinicId);
+
+            toast({
+                title: "✅ Notificação enviada!",
+                description: `Mensagem enviada para ${patientData.displayName}.`,
+            });
+        } catch (error: any) {
+            toast({
+                title: "⚠️ Erro ao enviar notificação",
+                description: error.message || "Ocorreu um erro ao enviar a mensagem.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSendingNotification(false);
+            setShowNotificationModal(false);
+            router.push('/doctor-dashboard');
+        }
+    };
+
+    const handleSkipNotification = () => {
+        setShowNotificationModal(false);
+        router.push('/doctor-dashboard');
     };
 
     return (
@@ -361,6 +416,39 @@ export default function AddUserPage() {
                     </form>
                 </CardContent>
             </Card>
+
+            {/* Modal de confirmação para envio de notificação */}
+            <Dialog open={showNotificationModal} onOpenChange={setShowNotificationModal}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Enviar Mensagem de Aviso?</DialogTitle>
+                        <DialogDescription>
+                            Deseja enviar uma mensagem no WhatsApp para {patientData?.displayName} notificando sobre o cadastro?
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <DialogFooter className="flex gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={handleSkipNotification}
+                            disabled={isSendingNotification}
+                        >
+                            Não, obrigado
+                        </Button>
+                        <Button
+                            onClick={handleSendNotification}
+                            disabled={isSendingNotification}
+                        >
+                            {isSendingNotification ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                            )}
+                            {isSendingNotification ? 'Enviando...' : 'Sim, enviar mensagem'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

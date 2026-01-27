@@ -141,6 +141,17 @@ export const createPatientUser = onCall(async (request) => {
             .doc(userRecord.uid)
             .set(userProfileData);
 
+        // Criar documento na coleção signupStatus
+        const phoneWithCountryCode = `55${data.phone}`;
+        await db
+            .collection("signupStatus")
+            .doc(phoneWithCountryCode)
+            .set({
+                status: "cadastrado",
+                clinicId: clinicId,
+                createdAt: FieldValue.serverTimestamp(),
+            });
+
         logger.info(`Paciente ${displayName} (UID: ${userRecord.uid}) criado por ${request.auth.uid}.`);
         return { success: true, message: `Usuário ${displayName} criado com sucesso.` };
 
