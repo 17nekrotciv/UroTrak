@@ -126,7 +126,7 @@ export const createUserFromN8n = onRequest(
       const data = signupDoc.data() as SignupData;
 
       const cpfStr = String(data.cpf);
-      const formattedPhoneStr = phoneNumber;
+      const formattedPhoneStr = phoneNumber.slice(2)
 
       if (!data.email || !data.nome || !data.clinicId) {
         logger.error('Dados de cadastro incompletos', { data });
