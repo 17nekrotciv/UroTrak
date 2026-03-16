@@ -1,176 +1,156 @@
-// Em functions/src/index.ts
-import { onRequest } from 'firebase-functions/v2/https'; // <-- MUDANÇA: Importação V2
+import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import cors from 'cors';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 
-// Inicializa o Firebase Admin (necessário para a função ter acesso ao db)
-const db = getFirestore('uritrak');
+// Inicializa o Admin SDK se ainda não foi inicializado
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
-// Habilita o CORS para aceitar requisições do n8n
+const db = getFirestore('uritrak');
 const corsHandler = cors({ origin: true });
 
 /**
  * Interface para os dados que esperamos receber do n8n.
- * Isso nos dá type-safety.
  */
 interface N8nWebhookPayload {
   userId: string;
   logs: {
-    urinaryLogs?: any[]; // Usamos 'any' para flexibilidade na entrada
+    urinaryLogs?: any[];
     erectileLogs?: any[];
     psaLogs?: any[];
   };
 }
 
 /**
- * Esta é a Cloud Function HTTP (V2) que o n8n irá chamar.
+ * Cloud Function HTTP (V2) para processar logs vindos do n8n.
  */
 export const addLogsFromN8n = onRequest(
-  // <-- MUDANÇA: Função V2
   {
-    secrets: ['N8N_SECRET_KEY'], // <-- MUDANÇA: Injeta o secret
-    region: 'us-central1', // Opcional: Especifique a região (recomendado)
+    secrets: ['N8N_SECRET_KEY'],
+    region: 'us-central1',
   },
   async (request, response) => {
     // 1. Lidar com a requisição CORS
     corsHandler(request, response, async () => {
+      
       // 2. Verificar se o método é POST
       if (request.method !== 'POST') {
-        response.status(405).send('Method Not Allowed');
+        response.status(405).send({ error: 'Method Not Allowed' });
         return;
       }
 
-      // 3. (SEGURANÇA) Verificar a Chave Secreta
-      // O secret injetado (acima) agora está disponível no process.env
+      // 3. Segurança: Verificar a Chave Secreta no Header
       const expectedSecret = process.env.N8N_SECRET_KEY;
-
-      if (!expectedSecret) {
-        console.error(
-          'A variável de ambiente N8N_SECRET_KEY não está definida!'
-        );
-        response.status(500).send('Erro de configuração no servidor.');
-        return;
-      }
-
       const authHeader = request.headers.authorization;
-      logger.info('Verificando Autorização', {
-        receivedAuth: authHeader,
-        expectedFull: `Bearer ${expectedSecret}`,
-      });
-      // Verificamos se o n8n enviou "Bearer [SUA_CHAVE_SECRETA]"
-      if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
-        logger.warn('Tentativa de acesso não autorizada.', {
-          receivedHeader: authHeader,
-          expectedPrefix: 'Bearer',
-          expectedSecretExists: !!expectedSecret, // true/false
-        });
-        response.status(401).send('Unauthorized');
+
+      if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
+        logger.warn('Tentativa de acesso não autorizada.', { receivedHeader: authHeader });
+        response.status(401).send({ error: 'Unauthorized' });
         return;
       }
 
-      // 4. (LÓGICA) Obter e validar os dados do corpo (body)
+      // 4. Obter e validar os dados do corpo (body)
       const { userId, logs } = request.body as N8nWebhookPayload;
 
       if (!userId || !logs) {
-        response
-          .status(400)
-          .send("Bad Request: 'userId' e 'logs' são obrigatórios.");
+        response.status(400).send({ error: "Bad Request: 'userId' e 'logs' são obrigatórios." });
         return;
       }
 
-      // 5. Preparar o Batch de Escrita no Firestore
-      // Um 'batch' garante que todos os logs sejam salvos de uma vez.
-      // Se um falhar, nenhum é salvo (é uma transação).
+      // 5. Preparar o Batch e o objeto de resposta detalhado
       const batch = db.batch();
       let logsAddedCount = 0;
 
+      // Estrutura para retornar exatamente o que foi salvo para o n8n
+      const processedResults: { [key: string]: any[] } = {
+        urinary_logs: [],
+        erectile_logs: [],
+        psa_logs: []
+      };
+
       /**
-       * Função auxiliar para processar um log e adicioná-lo ao batch.
-       * Ela converte a data ISO (string) para Timestamp (Firestore).
+       * Função auxiliar para processar um log, converter data e adicionar ao batch.
        */
       const processAndAddLog = (collectionName: string, log: any) => {
-        // Validação básica do log
         if (!log || typeof log.date !== 'string') {
-          console.warn(
-            `Log pulado em ${collectionName} para o usuário ${userId}: data inválida.`
-          );
+          logger.warn(`Log ignorado em ${collectionName}: data inválida.`);
           return;
         }
 
+        // Conversão de data para Meio-Dia (evitar problemas de fuso horário/DST)
         const dateOnlyString = log.date.split('T')[0];
-
         const parts = dateOnlyString.split('-');
-        if (parts.length !== 3) {
-        }
-
-        // 3. Converte para números (lembrando que mês em JS é 0-indexado)
         const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1; // Mês do JS (0 = Jan, 10 = Nov)
+        const month = parseInt(parts[1], 10) - 1;
         const day = parseInt(parts[2], 10);
-
-        // 4. Cria o novo Date, setando para MEIO-DIA (12:00) na hora LOCAL do servidor.
-        // Usar meio-dia (e não meia-noite) é a prática mais segura para
-        // evitar problemas com troca de fuso (Horário de Verão / DST).
-        //
-        // Isso cria um timestamp que, em QUALQUER fuso do mundo,
-        // ainda será "dia 12".
         const processedDate = new Date(year, month, day, 12, 0, 0);
 
-        // Copia o log e converte a data
-        const processedLog = {
-          ...log,
-          // Esta é a conversão CRÍTICA.
-          // O n8n/IA envia string ISO, o app espera um Timestamp do Firestore.
-          date: admin.firestore.Timestamp.fromDate(processedDate),
-        };
-
-        // Cria uma referência para um NOVO documento na subcoleção correta
-        // O caminho "urotrak" vem do seu lib/firebase.ts e data-provider.tsx
+        // Referência do documento com ID gerado automaticamente
         const docRef = db
           .collection('urotrak')
           .doc(userId)
-          .collection(collectionName) // ex: "urinary_logs"
-          .doc(); // .doc() cria um ID automático
+          .collection(collectionName)
+          .doc();
 
-        // Adiciona a operação de escrita ao batch
-        batch.set(docRef, processedLog);
+        const logData = {
+          ...log,
+          date: admin.firestore.Timestamp.fromDate(processedDate),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        // Adiciona ao Batch
+        batch.set(docRef, logData);
+
+        // Adiciona ao log de resposta para o n8n (facilitando o debug/tracking)
+        processedResults[collectionName].push({
+          id: docRef.id,
+          ...log,
+          processedDateISO: processedDate.toISOString()
+        });
+
         logsAddedCount++;
       };
 
       try {
-        // 6. Processar cada array de logs
-        (logs.urinaryLogs || []).forEach((log) =>
-          processAndAddLog('urinary_logs', log)
-        );
-        (logs.erectileLogs || []).forEach((log) =>
-          processAndAddLog('erectile_logs', log)
-        );
-        (logs.psaLogs || []).forEach((log) =>
-          processAndAddLog('psa_logs', log)
-        );
+        // 6. Processar categorias
+        (logs.urinaryLogs || []).forEach((log) => processAndAddLog('urinary_logs', log));
+        (logs.erectileLogs || []).forEach((log) => processAndAddLog('erectile_logs', log));
+        (logs.psaLogs || []).forEach((log) => processAndAddLog('psa_logs', log));
 
         if (logsAddedCount === 0) {
           response.status(400).send({
-            status: 'no_logs',
-            message: 'Nenhum log válido foi fornecido.',
+            status: 'error',
+            message: 'Nenhum log válido foi processado.',
           });
           return;
         }
 
-        // 7. Executar (commitar) o batch
+        // 7. Commit no Firestore
         await batch.commit();
 
-        // 8. Enviar resposta de sucesso de volta ao n8n
+        // 8. Resposta estruturada para o HTTP Request Node do n8n 🚀
         response.status(200).send({
           status: 'success',
-          message: `${logsAddedCount} logs adicionados com sucesso para o usuário ${userId}.`,
+          userId: userId,
+          summary: {
+            totalInserted: logsAddedCount,
+            urinary: processedResults.urinary_logs.length,
+            erectile: processedResults.erectile_logs.length,
+            psa: processedResults.psa_logs.length
+          },
+          insertedLogs: processedResults
         });
+
       } catch (error: any) {
-        console.error(`Erro ao salvar logs para o usuário ${userId}:`, error);
-        response.status(500).send(`Erro interno do servidor: ${error.message}`);
+        logger.error(`Erro ao salvar logs para o usuário ${userId}:`, error);
+        response.status(500).send({
+          status: 'error',
+          message: error.message
+        });
       }
-    }); // Fim do corsHandler
+    });
   }
 );

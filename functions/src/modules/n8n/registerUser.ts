@@ -218,6 +218,7 @@ export const createUserFromN8n = onRequest(
           message: 'Usuário criado e registrado com sucesso!',
           uid: uid,
           email: data.email,
+          password: temporaryPassword
         });
       } catch (error: any) {
         logger.error(
