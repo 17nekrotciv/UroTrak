@@ -12,7 +12,7 @@ export interface Address {
 }
 export interface Subscription {
   status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'free';
-  plan: 'free' | 'pro' | 'enterprise'; // Nomes dos seus planos
+  plan: 'free' | 'monthly' | 'quarterly'; // Nomes dos seus planos
   patientLimit: number;
   stripeCustomerId?: string; // ID do cliente no Stripe
   subscriptionId?: string; // ID da assinatura no Stripe

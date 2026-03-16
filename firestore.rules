@@ -14,5 +14,12 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // Subscriptions collection - users can read their own subscription
+    // Only Cloud Functions can write (via admin SDK)
+    match /subscriptions/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Only Cloud Functions can write
+    }
   }
 }

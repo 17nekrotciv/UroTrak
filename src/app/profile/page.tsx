@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import ClinicLogoUploader from '@/components/profile/ClinicLogoUploader';
+import SubscriptionSection from '@/components/profile/SubscriptionSection';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { auth, storage } from '@/lib/firebase';
@@ -371,6 +372,9 @@ export default function ProfilePage() {
                         </div>
                     </>
                 )}
+
+                <Separator className="my-8" />
+                <SubscriptionSection />
             </ScrollArea>
         </>
     );

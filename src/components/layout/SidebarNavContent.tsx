@@ -43,10 +43,12 @@ export default function SidebarNavContent({ onLinkClick }: SidebarNavContentProp
     return '/dashboard';
   }, [pathname]);
 
-  const navItems = baseNavLinks.map(link => ({
-    ...link,
-    href: `${basePath}${link.href}`,
-  }));
+  const navItems = useMemo(() => {
+    return baseNavLinks.map(link => ({
+      ...link,
+      href: `${basePath}${link.href}`,
+    }));
+  }, [basePath]);
 
   if (pathname === '/doctor-dashboard') {
     return null;

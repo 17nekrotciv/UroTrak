@@ -132,8 +132,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     setLoading(true);
     try {
-      await auth.signOut();
+      // Limpa o estado local primeiro
+      setAuthUser(null);
       setUser(null);
+      
+      // Encerra a sessão do Firebase Auth
+      await auth.signOut();
+      
+      // Limpa possíveis dados armazenados no localStorage relacionados ao Firebase
+      // Isso garante que tokens e cache sejam removidos
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('firebase:')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Redireciona para login
       router.push("/login");
     } catch (error) {
       console.error("Erro ao fazer logout: ", error);

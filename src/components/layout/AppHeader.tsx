@@ -102,6 +102,14 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
                 <span>Perfil</span>
               </Link>
             </DropdownMenuItem>
+            {userProfile?.role === 'doctor' && (
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <Link href="/profile">
+                  <span className="mr-2">💎</span>
+                  <span>Assinatura</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Sair</span>
