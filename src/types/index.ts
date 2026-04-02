@@ -11,7 +11,7 @@ export interface Address {
   zipCode?: string;
 }
 export interface Subscription {
-  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'free';
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'assinado' ;
   plan: 'free' | 'monthly' | 'quarterly'; // Nomes dos seus planos
   patientLimit: number;
   stripeCustomerId?: string; // ID do cliente no Stripe

@@ -81,7 +81,7 @@ export const createSignUp = onRequest(
         await twilioClient.messages.create({
           from: `whatsapp:${TWILIO_WHATSAPP_NUMBER.value()}`, // Número do WhatsApp da Twilio
           to: `whatsapp:${phone}`, // Número do paciente (formato: +5511999999999)
-          contentSid: 'HX1de9990ad846d34176216eb913bfa7de', // ID do template aprovado pela Twilio
+          contentSid: 'HX5c44415afa66489d8e7b0757b6259176', // ID do template aprovado pela Twilio
           contentVariables: JSON.stringify({
             1: "seja bem-vindo(a)", // Nome do paciente
           }),

@@ -373,8 +373,12 @@ export default function ProfilePage() {
                     </>
                 )}
 
-                <Separator className="my-8" />
-                <SubscriptionSection />
+                {userProfile?.role !== 'doctor' && (
+                    <>
+                        <Separator className="my-8" />
+                        <SubscriptionSection />
+                    </>
+                )}
             </ScrollArea>
         </>
     );

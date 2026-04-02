@@ -102,9 +102,9 @@ export default function AppHeader({ onMenuClick }: AppHeaderProps) {
                 <span>Perfil</span>
               </Link>
             </DropdownMenuItem>
-            {userProfile?.role === 'doctor' && (
+            {userProfile?.role !== 'doctor' && (
               <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href="/profile">
+                <Link href="/pricing">
                   <span className="mr-2">💎</span>
                   <span>Assinatura</span>
                 </Link>

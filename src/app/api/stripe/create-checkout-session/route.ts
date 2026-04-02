@@ -14,23 +14,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { priceId, planId, couponCode } = body;
-
-    if (!priceId || !planId) {
-      return NextResponse.json(
-        { error: 'priceId e planId são obrigatórios' },
-        { status: 400 }
-      );
-    }
+    const { priceId, planId, couponCode, customerId } = body;
 
     // Chamar a Cloud Function
-    const functions = getFunctions(undefined, 'southamerica-east1');
+    const functions = getFunctions(undefined, 'us-central1');
     const createCheckout = httpsCallable(functions, 'createStripeCheckout');
 
     const result = await createCheckout({ 
       priceId, 
       planId,
       couponCode, // Passa o código do cupom se fornecido
+      customerId, // Passa o customer_id se existir
     });
     const data = result.data as { sessionId: string; url: string };
 

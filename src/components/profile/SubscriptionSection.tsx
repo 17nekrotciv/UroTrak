@@ -202,51 +202,70 @@ export default function SubscriptionSection() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Detalhes da Assinatura</CardTitle>
-                {getStatusBadge(subscription.status)}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <p className="text-muted-foreground mb-1">Valor</p>
-                  <p className="font-medium">
-                    {formatCurrency(subscription.amount, subscription.currency)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground mb-1">Data de Assinatura</p>
-                  <p className="font-medium text-xs">{formatDate(subscription.created_at)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground mb-1">Método de Pagamento</p>
-                  <p className="font-medium capitalize">{subscription.payment_method}</p>
-                </div>
-                {subscription.subscription_id && (
+          <>
+          {subscription.status === 'canceled' && (
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="py-8 text-center space-y-4">
+                  <Sparkles className="h-10 w-10 mx-auto text-blue-600 mb-2" />
                   <div>
-                    <p className="text-muted-foreground mb-1">ID da Assinatura</p>
-                    <p className="font-mono text-xs truncate">{subscription.subscription_id}</p>
+                    <p className="font-medium text-blue-900 mb-2">
+                      Sua assinatura foi cancelada
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      Renove sua assinatura para continuar aproveitando todos os recursos.
+                    </p>
+                  </div>
+                  <Button asChild size="sm">
+                    <Link href="/pricing">
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Renovar Assinatura
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Detalhes da Assinatura</CardTitle>
+                  {getStatusBadge(subscription.status)}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+                  <div>
+                    <p className="text-muted-foreground mb-1">Data de Assinatura</p>
+                    <p className="font-medium text-xs">{formatDate(subscription.created_at)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-1">Método de Pagamento</p>
+                    <p className="font-medium capitalize">{subscription.payment_method}</p>
+                  </div>
+                  {subscription.subscription_id && (
+                    <div>
+                      <p className="text-muted-foreground mb-1">ID da Assinatura</p>
+                      <p className="font-mono text-xs truncate">{subscription.subscription_id}</p>
+                    </div>
+                  )}
+                </div>
+                {subscription.status !== 'canceled' && (
+                  <div className="pt-4 border-t">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowCancelDialog(true)}
+                      className="w-full"
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Cancelar Assinatura
+                    </Button>
                   </div>
                 )}
-              </div>
-              {subscription.status !== 'canceled' && (
-                <div className="pt-4 border-t">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setShowCancelDialog(true)}
-                    className="w-full"
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Cancelar Assinatura
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            
+            
+          </>
         )}
       </div>
 

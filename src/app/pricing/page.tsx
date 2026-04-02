@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, ArrowLeft } from 'lucide-react';
+import { Check, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/auth-provider';
 import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 interface PricingPlan {
   id: string;
@@ -28,26 +30,10 @@ interface PricingPlan {
 
 const plans: PricingPlan[] = [
   {
-    id: 'free',
-    name: 'Gratuito',
-    description: 'Ideal para começar',
-    price: 0,
-    currency: 'BRL',
-    interval: 'mês',
-    patientLimit: 10,
-    stripePriceId: '', // No Stripe price needed for free plan
-    features: [
-      'Até 10 pacientes',
-      'Acompanhamento básico',
-      'Gráficos de dados',
-      'Suporte por email',
-    ],
-  },
-  {
     id: 'monthly',
-    name: 'Mensal',
-    description: 'Plano de assinatura mensal',
-    price: 10.00,
+    name: 'Plano Profissional',
+    description: 'Gerencie todos os seus pacientes com eficiência',
+    price: 19.90,
     currency: 'BRL',
     interval: 'mês',
     patientLimit: 100,
@@ -55,33 +41,13 @@ const plans: PricingPlan[] = [
     stripePaymentLink: process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK_MONTHLY || 'https://buy.stripe.com/test_4gM7sL2yogQ93il4Ox97G00?client_reference_id={USER_ID}',
     popular: true,
     features: [
-      'Até 100 pacientes',
-      'Todos os recursos do plano gratuito',
+      'Pacientes ilimitados',
+      'Acompanhamento completo',
+      'Gráficos e análises avançadas',
       'Exportação de dados',
       'Compartilhamento com pacientes',
-      'Análises avançadas',
       'Suporte prioritário',
       'Cancele a qualquer momento',
-    ],
-  },
-  {
-    id: 'quarterly',
-    name: 'Trimestral',
-    description: 'Economize com o plano trimestral',
-    price: 25.00,
-    currency: 'BRL',
-    interval: '3 meses',
-    patientLimit: 100,
-    stripePriceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY || '',
-    features: [
-      'Até 100 pacientes',
-      'Todos os recursos do plano gratuito',
-      'Exportação de dados',
-      'Compartilhamento com pacientes',
-      'Análises avançadas',
-      'Suporte prioritário',
-      'Economize 16% vs plano mensal',
-      'Renovação automática a cada 3 meses',
     ],
   },
 ];
@@ -91,86 +57,26 @@ export default function PricingPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [checkingPayment, setCheckingPayment] = useState(false);
   const [couponCode, setCouponCode] = useState('');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
 
-  // Função para verificar se há uma nova assinatura
-  const checkForNewSubscription = async (lastCheckTime: number) => {
-    if (!user?.uid) return false;
-
-    try {
-      const subscriptionRef = doc(db, 'subscription', user.uid);
-      const docSnap = await getDoc(subscriptionRef);
-      
-      if (docSnap.exists()) {
-        const subscriptionData = docSnap.data();
-        const createdAt = subscriptionData.created_at?.toMillis() || 0;
-        
-        // Se a assinatura foi criada após o tempo da última verificação
-        if (createdAt > lastCheckTime) {
-          return true;
-        }
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Erro ao verificar assinatura:', error);
-      return false;
-    }
-  };
-
-  // Polling para verificar se o pagamento foi completado
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    let timeoutId: NodeJS.Timeout;
-
-    if (checkingPayment) {
-      const checkTime = Date.now();
-      
-      toast({
-        title: 'Aguardando pagamento',
-        description: 'Complete o pagamento na janela do Stripe. Esta página será atualizada automaticamente.',
-        duration: 10000,
-      });
-
-      intervalId = setInterval(async () => {
-        const hasNewSubscription = await checkForNewSubscription(checkTime);
-        
-        if (hasNewSubscription) {
-          setCheckingPayment(false);
-          toast({
-            title: '✅ Pagamento confirmado!',
-            description: 'Sua assinatura foi ativada com sucesso. Redirecionando...',
-          });
-          
-          // Aguarda 2 segundos e redireciona para o dashboard
-          setTimeout(() => {
-            router.push('/dashboard/success?payment=completed');
-            router.refresh();
-          }, 2000);
+    const fetchSubscription = async () => {
+      if (!user) return;
+      try {
+        const subscriptionRef = doc(db, 'subscription', user.uid);
+        const subscriptionDoc = await getDoc(subscriptionRef);
+        if (subscriptionDoc.exists()) {
+          setSubscriptionStatus(subscriptionDoc.data().status || null);
         }
-      }, 3000); // Verifica a cada 3 segundos
-
-      // Timeout de 15 minutos
-      timeoutId = setTimeout(() => {
-        setCheckingPayment(false);
-        toast({
-          title: 'Tempo esgotado',
-          description: 'Não detectamos o pagamento. Se você completou o pagamento, verifique seu histórico de assinaturas.',
-          variant: 'destructive',
-        });
-      }, 15 * 60 * 1000); // 15 minutos
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      } catch (error) {
+        console.error('Erro ao buscar assinatura:', error);
       }
     };
-  }, [checkingPayment, user, toast, router]);
+    fetchSubscription();
+  }, [user]);
+
+  const hasActiveSubscription = subscriptionStatus === 'assinado' || subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
 
   const handleSelectPlan = async (plan: PricingPlan) => {
     if (!user) {
@@ -183,68 +89,92 @@ export default function PricingPage() {
       return;
     }
 
-    if (plan.id === 'free') {
-      toast({
-        title: 'Plano gratuito',
-        description: 'Você já está no plano gratuito.',
-      });
-      return;
-    }
+
 
     setLoadingPlan(plan.id);
 
     try {
-      // Se o plano tem um link direto de pagamento do Stripe, usa ele
-      if (plan.stripePaymentLink) {
-        const paymentUrl = plan.stripePaymentLink.replace('{USER_ID}', user.uid);
+      // Verifica se já existe um customer_id na coleção subscription
+      let existingCustomerId: string | undefined;
+      
+      try {
+        const subscriptionRef = doc(db, 'subscription', user.uid);
+        const subscriptionDoc = await getDoc(subscriptionRef);
         
-        // Abre em nova aba
-        window.open(paymentUrl, '_blank');
-        
-        // Inicia o polling para verificar o pagamento
-        setCheckingPayment(true);
-        setLoadingPlan(null);
-        return;
+        if (subscriptionDoc.exists()) {
+          const data = subscriptionDoc.data();
+          existingCustomerId = data.customer_id;
+        }
+      } catch (error) {
+        console.error('Erro ao verificar customer_id existente:', error);
+        // Continua mesmo se houver erro ao buscar customer_id
       }
 
-      // Caso contrário, usa a API para criar checkout session
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: plan.stripePriceId,
-          planId: plan.id,
-          couponCode: couponCode.trim() || undefined, // Passa o cupom se fornecido
-        }),
+      // Chama a Cloud Function diretamente
+      const functions = getFunctions(undefined, 'us-central1');
+      const createCheckout = httpsCallable(functions, 'createStripeCheckout');
+
+      const result = await createCheckout({
+        couponCode: couponCode.trim() || 'UROTRACK30', // Usa o cupom digitado ou UROTRACK3 como padrão
+        customerId: existingCustomerId, // Passa o customer_id se existir
       });
 
-      if (!response.ok) {
-        throw new Error('Falha ao criar sessão de checkout');
-      }
-
-      const { url } = await response.json();
+      const data = result.data as { sessionId: string; url: string };
       
-      if (url) {
-        // Abre em nova aba
-        window.open(url, '_blank');
-        
-        // Inicia o polling para verificar o pagamento
-        setCheckingPayment(true);
-        setLoadingPlan(null);
+      if (data.url) {
+        // Redireciona para o checkout do Stripe
+        window.location.href = data.url;
+      } else {
+        throw new Error('URL de checkout não retornada');
       }
     } catch (error) {
       console.error('Erro ao criar checkout:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível iniciar o checkout. Tente novamente.',
+        description: error instanceof Error ? error.message : 'Não foi possível iniciar o checkout. Tente novamente.',
         variant: 'destructive',
       });
-    } finally {
       setLoadingPlan(null);
     }
   };
+
+  // Verifica se o usuário é um médico - médicos não precisam de assinatura
+  if (user?.role === 'doctor') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Back Button */}
+          <div className="mb-8">
+            <Button asChild className="gap-2">
+              <Link href="/doctor-dashboard">
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </Link>
+            </Button>
+          </div>
+
+          {/* Message for Doctors */}
+          <div className="text-center py-12">
+            <Card className="max-w-2xl mx-auto">
+              <CardHeader>
+                <CardTitle className="text-3xl">Área restrita a pacientes</CardTitle>
+                <CardDescription className="text-lg mt-4">
+                  Esta página é exclusiva para pacientes. Como médico, você já tem acesso completo à plataforma sem necessidade de assinatura.
+                </CardDescription>
+              </CardHeader>
+              <CardFooter className="justify-center">
+                <Button asChild>
+                  <Link href="/doctor-dashboard">
+                    Ir para o Dashboard
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
@@ -258,6 +188,18 @@ export default function PricingPage() {
             </Link>
           </Button>
         </div>
+
+        {/* Aviso de assinatura ativa */}
+        {hasActiveSubscription && (
+          <Alert className="mb-8 max-w-2xl mx-auto border-amber-500 bg-amber-50">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <AlertTitle className="text-amber-800">Você já possui uma assinatura ativa</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              Sua assinatura atual está {subscriptionStatus === 'trialing' ? 'em período de teste' : 'ativa'}. Para gerenciar sua assinatura, acesse seu{' '}
+              <Link href="/profile" className="underline font-semibold hover:text-amber-900">perfil</Link>.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Header */}
         <div className="text-center mb-12">
@@ -275,68 +217,20 @@ export default function PricingPage() {
                 <span className="text-green-700 font-semibold">🎁 Cupom de Desconto</span>
               </div>
               <p className="text-sm text-green-600 mb-3">
-                Novo usuário? Use o cupom <strong>WELCOME3M</strong> e ganhe 3 meses grátis!
+                Novo usuário? Use o cupom <strong>UROTRACK30</strong> e ganhe 1 mês grátis!
               </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Digite seu cupom"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  className="flex-1 px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                  disabled={checkingPayment || loadingPlan !== null}
-                />
-                {couponCode && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCouponCode('')}
-                    className="text-green-700 border-green-300 hover:bg-green-100"
-                  >
-                    Limpar
-                  </Button>
-                )}
-              </div>
-              {couponCode && (
-                <p className="text-xs text-green-600 mt-2">
-                  ✓ Cupom será validado no checkout
-                </p>
-              )}
             </div>
           </div>
           
-          {/* Indicador de aguardando pagamento */}
-          {checkingPayment && (
-            <div className="mt-6 mx-auto max-w-md">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                  <div className="text-left flex-1">
-                    <p className="font-semibold text-blue-900">Aguardando confirmação de pagamento</p>
-                    <p className="text-sm text-blue-700">Complete o pagamento na janela do Stripe</p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCheckingPayment(false)}
-                  className="w-full text-blue-700 border-blue-300 hover:bg-blue-100"
-                >
-                  Cancelar verificação
-                </Button>
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
+        <div className="flex justify-center mb-8">
           {plans.map((plan) => (
             <Card
               key={plan.id}
-              className={`relative flex flex-col ${
-                plan.popular ? 'border-blue-500 border-2 shadow-lg' : ''
-              }`}
+              className="relative flex flex-col w-full max-w-md border-blue-500 border-2 shadow-lg"
             >
               {plan.popular && (
                 <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500">
@@ -374,15 +268,13 @@ export default function PricingPage() {
                   className="w-full"
                   variant={plan.popular ? 'default' : 'outline'}
                   onClick={() => handleSelectPlan(plan)}
-                  disabled={loadingPlan === plan.id || checkingPayment}
+                  disabled={loadingPlan === plan.id || hasActiveSubscription}
                 >
                   {loadingPlan === plan.id
                     ? 'Carregando...'
-                    : checkingPayment
-                    ? '⏳ Aguardando pagamento...'
-                    : plan.id === 'free'
-                    ? 'Plano Atual'
-                    : 'Escolher Plano'}
+                    : hasActiveSubscription
+                      ? 'Assinatura Ativa'
+                      : 'Assinar Agora'}
                 </Button>
               </CardFooter>
             </Card>
@@ -391,8 +283,8 @@ export default function PricingPage() {
 
         {/* FAQ or Additional Info */}
         <div className="text-center text-sm text-gray-600">
-          <p>Todos os planos incluem 14 dias de teste gratuito.</p>
           <p>Cancele a qualquer momento, sem taxa de cancelamento.</p>
+          <p>Pagamento seguro processado pelo Stripe.</p>
         </div>
       </div>
     </div>

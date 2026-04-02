@@ -20,23 +20,27 @@ export const handleCreateStripeCheckout = async (
   context: functionsV1.https.CallableContext
 ) => {
   // Validação de autenticação
-  if (!context.auth) {
+
+
+ // Garante que o payload exista mesmo que data seja null
+  const payload = data || {};
+
+  // Pega o UID sem disparar erro de referência
+  // Se vier do n8n, context.auth será undefined
+  const uid = (context.auth ? context.auth.uid : null) || payload.uid;
+
+  if (!uid) {
     throw new functions.https.HttpsError(
-      'unauthenticated',
-      'Você precisa estar logado para criar uma assinatura.'
+      'invalid-argument', // Mudamos para 400 em vez de 401 para não travar o n8n
+      'O UID do usuário é obrigatório.'
     );
   }
+  const couponCode = payload.couponCode || undefined;
+  const customerId = payload.customerId || undefined;
 
-  const { uid } = context.auth;
-  const { priceId, planId, couponCode } = data;
-
-  // Validação de dados
-  if (!priceId || !planId) {
-    throw new functions.https.HttpsError(
-      'invalid-argument',
-      'priceId e planId são obrigatórios.'
-    );
-  }
+  // Usar o único plano disponível (valores fixos)
+  const priceId = 'price_1T9xY3FsXW36w2CH8TEZIpN6'; // ID do price no Stripe
+  const planId = 'monthly'; // ID interno do plano
 
   try {
     // Definir URLs de sucesso e cancelamento
@@ -52,6 +56,7 @@ export const handleCreateStripeCheckout = async (
       successUrl,
       cancelUrl,
       couponCode, // Passa o código do cupom
+      customerId, // Passa o customer_id se existir
     });
 
     return {
@@ -64,6 +69,81 @@ export const handleCreateStripeCheckout = async (
       'internal',
       'Erro ao criar sessão de checkout.'
     );
+  }
+};
+
+/**
+ * Função HTTP para criar uma sessão de checkout do Stripe via n8n
+ * Esta função não requer autenticação Firebase e recebe o UID diretamente no payload
+ */
+export const handleCreateStripeCheckoutN8n = async (
+  request: functionsV1.https.Request,
+  response: functionsV1.Response
+) => {
+  // Permitir CORS se necessário
+  response.set('Access-Control-Allow-Origin', '*');
+  
+  if (request.method === 'OPTIONS') {
+    response.set('Access-Control-Allow-Methods', 'POST');
+    response.set('Access-Control-Allow-Headers', 'Content-Type');
+    response.status(204).send('');
+    return;
+  }
+
+  if (request.method !== 'POST') {
+    response.status(405).send('Method Not Allowed');
+    return;
+  }
+
+  try {
+    const payload = request.body || {};
+    const { uid, customerId } = payload;
+
+    // Validação do UID (obrigatório)
+    if (!uid) {
+      functions.logger.error('UID não fornecido no payload');
+      response.status(400).json({
+        error: 'invalid-argument',
+        message: 'O UID do usuário é obrigatório.',
+      });
+      return;
+    }
+
+    // Usar o único plano disponível (valores fixos)
+    const priceId = 'price_1T9xY3FsXW36w2CH8TEZIpN6'; // ID do price no Stripe
+    const planId = 'monthly'; // ID interno do plano
+
+    // Definir URLs de sucesso e cancelamento
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const successUrl = `${baseUrl}/perfil`;
+    const cancelUrl = `${baseUrl}/pricing`;
+
+    // Criar sessão de checkout
+    const session = await createCheckoutSession({
+      userId: uid,
+      priceId,
+      planId,
+      successUrl,
+      cancelUrl,
+      customerId: customerId || undefined,
+    });
+
+    functions.logger.info(`Sessão de checkout criada para UID: ${uid}`, {
+      sessionId: session.id,
+    });
+
+    response.status(200).json({
+      success: true,
+      sessionId: session.id,
+      url: session.url,
+    });
+  } catch (error: any) {
+    functions.logger.error('Erro ao criar checkout do Stripe via n8n:', error);
+    response.status(500).json({
+      error: 'internal',
+      message: 'Erro ao criar sessão de checkout.',
+      details: error.message,
+    });
   }
 };
 
@@ -270,14 +350,10 @@ export const handleCancelStripeSubscription = async (
       functions.logger.info('Validação por Firestore passou!');
     }
 
-    // Cancelar a assinatura
+    // Cancelar a assinatura (já atualiza o status para 'canceled' no Firestore)
     await cancelSubscription(subscriptionId);
-
-    // Deletar o documento da coleção subscription
-    const db = getFirestore('uritrak');
-    await db.collection('subscription').doc(uid).delete();
     
-    functions.logger.info(`Documento de subscription deletado do Firestore para o userId: ${uid}`);
+    functions.logger.info(`Assinatura cancelada com status atualizado para 'canceled' no Firestore para o userId: ${uid}`);
 
     return {
       success: true,

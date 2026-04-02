@@ -36,6 +36,7 @@ export interface CreateCheckoutSessionParams {
   successUrl: string;
   cancelUrl: string;
   couponCode?: string; // Código do cupom promocional (opcional)
+  customerId?: string; // Customer ID existente do Stripe (opcional)
 }
 
 /**
@@ -44,7 +45,7 @@ export interface CreateCheckoutSessionParams {
 export const createCheckoutSession = async (
   params: CreateCheckoutSessionParams
 ): Promise<Stripe.Checkout.Session> => {
-  const { userId, priceId, planId, successUrl, cancelUrl, couponCode } = params;
+  const { userId, priceId, planId, successUrl, cancelUrl, couponCode, customerId: providedCustomerId } = params;
 
   try {
     // Buscar dados do usuário
@@ -56,22 +57,28 @@ export const createCheckoutSession = async (
     const userData = userDoc.data();
     const email = userData?.email;
 
-    // Verificar ou criar customer no Stripe
-    let customerId = userData?.stripeCustomerId;
+    // Usar o customerId fornecido ou verificar/criar um novo
+    let customerId = providedCustomerId;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: email,
-        metadata: {
-          firebaseUID: userId,
-        },
-      });
-      customerId = customer.id;
+      // Se não foi fornecido, verificar se existe no documento do usuário
+      customerId = userData?.stripeCustomerId;
 
-      // Salvar o customer ID no Firestore
-      await db.collection('users').doc(userId).update({
-        'subscription.stripeCustomerId': customerId,
-      });
+      if (!customerId) {
+        // Criar novo customer no Stripe
+        const customer = await stripe.customers.create({
+          email: email,
+          metadata: {
+            firebaseUID: userId,
+          },
+        });
+        customerId = customer.id;
+
+        // Salvar o customer ID no Firestore
+        await db.collection('users').doc(userId).update({
+          'subscription.stripeCustomerId': customerId,
+        });
+      }
     }
 
     // Verificar se o usuário é novo (nunca teve assinatura)
@@ -92,13 +99,13 @@ export const createCheckoutSession = async (
         if (promotionCodes.data.length > 0) {
           const promotionCode = promotionCodes.data[0] as any; // Usar any para contornar limitações de tipagem
           
-          // Verificar se o cupom é válido (3 meses grátis)
+          // Verificar se o cupom é válido (1 mês grátis)
           const coupon = promotionCode.coupon;
-          if (coupon && coupon.duration === 'repeating' && coupon.duration_in_months === 3 && coupon.percent_off === 100) {
+          if (coupon && coupon.duration === 'repeating' && coupon.duration_in_months === 1 && coupon.percent_off === 100) {
             promotionCodeId = promotionCode.id;
             functions.logger.info(`Cupom válido aplicado: ${couponCode} para usuário ${userId}`);
           } else {
-            functions.logger.warn(`Cupom ${couponCode} não atende aos critérios (3 meses 100% off)`);
+            functions.logger.warn(`Cupom ${couponCode} não atende aos critérios (1 mês 100% off)`);
           }
         } else {
           functions.logger.warn(`Cupom ${couponCode} não encontrado ou inativo`);
@@ -125,6 +132,8 @@ export const createCheckoutSession = async (
       mode: 'subscription',
       success_url: successUrl,
       cancel_url: cancelUrl,
+      // Permite que o usuário digite códigos promocionais na interface do Stripe
+      allow_promotion_codes: true,
       metadata: {
         userId: userId,
         planId: planId,
@@ -137,8 +146,10 @@ export const createCheckoutSession = async (
       },
     };
 
-    // Adicionar código promocional se validado
+    // Adicionar código promocional se validado (aplica automaticamente)
+    // discounts e allow_promotion_codes são mutuamente exclusivos no Stripe
     if (promotionCodeId) {
+      delete sessionData.allow_promotion_codes;
       sessionData.discounts = [
         {
           promotion_code: promotionCodeId,

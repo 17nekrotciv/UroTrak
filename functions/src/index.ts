@@ -24,6 +24,7 @@ import {
   handleCreateStripeCheckout,
   handleStripeWebhook,
   handleCancelStripeSubscription,
+  handleCreateStripeCheckoutN8n,
 } from './modules/subscriptions/controllers/stripeController';
 import { sendPatientInvite } from './modules/email/sendInvite';
 import { addLogsFromN8n } from './modules/n8n/batchWrite';
@@ -39,7 +40,7 @@ const stripeWebhookSecret = defineSecret('STRIPE_WEBHOOK_SECRET');
 
 // Configurações globais para todas as functions
 setGlobalOptions({ 
-  region: 'southamerica-east1',
+  region: 'us-central1',
   maxInstances: 10 
 });
 export { onClinicCreateSetDoctorClaims };
@@ -67,6 +68,10 @@ export const handleAsaasWebhook = functions.https.onRequest(
 export const createStripeCheckout = functions
   .runWith({ secrets: [stripeSecretKey] })
   .https.onCall(handleCreateStripeCheckout);
+
+export const createStripeCheckoutN8n = functions
+  .runWith({ secrets: [stripeSecretKey] })
+  .https.onRequest(handleCreateStripeCheckoutN8n);
 
 export const cancelStripeSubscription = functions
   .runWith({ secrets: [stripeSecretKey] })
